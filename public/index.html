@@ -232,39 +232,58 @@
       <div id="tab-cam" class="tab-content">
         <div class="card">
           <h3>Quay Video (Ghi ra file)</h3>
-          <div class="control-row" style="margin-bottom: 10px">
-            <label for="camName" style="width: 100px">Camera:</label>
-            <select id="camName" class="input-field"></select>
-          </div>
-          <div class="control-row" style="margin-bottom: 10px">
-            <label for="audioName" style="width: 100px">Microphone:</label>
-            <select id="audioName" class="input-field"></select>
-          </div>
+
           <div
             class="control-row"
-            style="justify-content: center; margin-bottom: 15px"
+            style="justify-content: center; gap: 20px; margin-bottom: 15px"
           >
-            <button class="btn-refresh" onclick="loadDevices(true)">
-              🔄 Tải Lại Danh Sách Thiết Bị
-            </button>
+            <label style="cursor: pointer">
+              <input
+                type="radio"
+                name="recMode"
+                value="timer"
+                checked
+                onchange="toggleRecMode()"
+              />
+              ⏱️ Hẹn giờ
+            </label>
+            <label style="cursor: pointer">
+              <input
+                type="radio"
+                name="recMode"
+                value="manual"
+                onchange="toggleRecMode()"
+              />
+              🖐️ Thủ công
+            </label>
           </div>
-          <div class="control-row">
+
+          <div class="control-row" id="timerInputRow">
             <div class="vid-duration-wrapper">
+              <label>Thời lượng:</label>
               <input
                 type="number"
                 id="vidDur"
-                value="5"
+                value="10"
                 min="1"
                 max="300"
                 style="width: 70px; text-align: center"
               />
-              <label>giây (Tối đa 300s)</label>
+              <label>giây</label>
             </div>
-            <button id="btnVid" onclick="recordVideo()" class="btn-primary">
-              🔴 QUAY
+          </div>
+
+          <div class="control-row" style="justify-content: center">
+            <button
+              id="btnVid"
+              onclick="recordVideo()"
+              class="btn-primary"
+              style="min-width: 200px"
+            >
+              🔴 BẮT ĐẦU QUAY
             </button>
           </div>
-          <div id="vidStatus" class="status"></div>
+          <div id="vidStatus" class="status" style="text-align: center"></div>
         </div>
 
         <div class="card">
@@ -341,7 +360,7 @@
       </div>
       <div id="actionLogList" class="action-log-list"></div>
     </div>
-
+    <canvas id="camRecorderCanvas" style="display: none"></canvas>
     <script src="/app.js" type="module"></script>
   </body>
 </html>

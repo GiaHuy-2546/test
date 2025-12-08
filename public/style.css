@@ -246,14 +246,22 @@ tr:hover {
 
 /* Khung hien thi anh chup man hinh */
 .screen-box {
-  background: #222;
-  min-height: 300px;
+  background: #000;
+  height: 480px; /* Tang chieu cao len de vua voi ty le 4:3 cua 640x480 */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   overflow: hidden;
   margin-top: 15px;
+  position: relative; /* De canvas an co the nam trong nay neu can */
+}
+#camStreamView,
+#screenStreamView {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* QUAN TRONG: Giu dung ty le anh, khong bi meo */
+  display: block;
 }
 #screenImg {
   max-width: 100%;
