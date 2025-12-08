@@ -9,8 +9,23 @@
   <body>
     <div class="container">
       <header>
-        <h1>Điều khiển máy tính từ xa</h1>
-        <div id="client-info" class="client-info">Đang kết nối...</div>
+        <h1 style="display: inline-block">Điều khiển máy tính từ xa</h1>
+
+        <div
+          style="float: right; display: flex; align-items: center; gap: 10px"
+        >
+          <button
+            class="theme-toggle-btn"
+            onclick="toggleTheme()"
+            title="Chuyển chế độ Sáng/Tối"
+          >
+            🌗 Mode
+          </button>
+          <div id="client-info" class="client-info" style="position: static">
+            Đang kết nối...
+          </div>
+        </div>
+        <div style="clear: both"></div>
       </header>
 
       <div class="tabs-scroll">

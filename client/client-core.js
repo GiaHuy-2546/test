@@ -1,6 +1,6 @@
 /**
  * CLIENT CORE (STANDALONE VERSION)
- * Không dùng module import/export để chạy được trực tiếp file://
+ * Dong bo logic voi Web Client (Dark Mode, Fix Stream, New Cam)
  */
 
 // 1. STORE & STATE
@@ -19,7 +19,7 @@ const App = {
 };
 localStorage.setItem("rc_device_id", App.DEVICE_ID);
 
-// 2. UI HELPERS (Namespace UI)
+// 2. UI HELPERS
 const UI = {
   logAction: (msg, success) => {
     const list = document.getElementById("actionLogList");
@@ -33,7 +33,20 @@ const UI = {
   toggleActionLog: () =>
     document.getElementById("actionLogList").classList.toggle("minimized"),
 
-  // Slider & Tabs
+  // --- THEME ---
+  toggleTheme: () => {
+    document.body.classList.toggle("light-mode");
+    localStorage.setItem(
+      "theme",
+      document.body.classList.contains("light-mode") ? "light" : "dark"
+    );
+  },
+  initTheme: () => {
+    if (localStorage.getItem("theme") === "light")
+      document.body.classList.add("light-mode");
+  },
+
+  // --- TABS & SLIDER ---
   moveSlider: (btn) => {
     const slider = document.getElementById("tab-slider");
     if (slider && btn) {
@@ -46,13 +59,10 @@ const UI = {
     const active = document.querySelector(".tab-btn.active");
     if (active) UI.moveSlider(active);
   },
+
   showTab: (id) => {
-    // Stop streams if switching
-    if (
-      (App.isScreenStreamOn || App.isCamStreamOn) &&
-      id !== "screen" &&
-      id !== "cam"
-    ) {
+    // === FIX: DUNG HET STREAM KHI CHUYEN TAB ===
+    if (App.isScreenStreamOn || App.isCamStreamOn) {
       UI.logAction("Chuyển tab -> Ngắt stream.", true);
       if (App.isScreenStreamOn) Screen.toggleScreenStream(null);
       if (App.isCamStreamOn) Cam.toggleCamStream(null);
@@ -84,6 +94,7 @@ const UI = {
       if (id === "keylog") Keylog.loadKeylog();
     }
   },
+
   filterTable: (tid, col, txt) => {
     document
       .querySelectorAll(`#${tid} tbody tr`)
@@ -98,7 +109,7 @@ const UI = {
   },
 };
 
-// 3. SOCKET LOGIC (Namespace Socket)
+// 3. SOCKET LOGIC
 const Socket = {
   send: (cmd, payload = null) => {
     if (App.socket && App.socket.readyState === WebSocket.OPEN) {
@@ -109,11 +120,9 @@ const Socket = {
   },
   init: (ip) => {
     App.socket = new WebSocket(`ws://${ip}?id=${App.DEVICE_ID}`);
-
     App.socket.onopen = () => console.log("WS Connected");
-
     App.socket.onmessage = (event) => {
-      // Binary (Image Stream)
+      // Binary Image
       if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
         const url = URL.createObjectURL(
           new Blob([event.data], { type: "image/jpeg" })
@@ -129,7 +138,6 @@ const Socket = {
         }
         return;
       }
-
       // JSON
       try {
         const msg = JSON.parse(event.data);
@@ -141,11 +149,10 @@ const Socket = {
         console.error(e);
       }
     };
-
     App.socket.onclose = () => {
       UI.logAction("Mất kết nối Server!", false);
       alert("Mất kết nối với Server!");
-      location.reload(); // Reload de quay lai man hinh login
+      location.reload();
     };
     App.socket.onerror = (e) => console.error("WS Error", e);
   },
@@ -159,7 +166,6 @@ function handleAuth(msg) {
       App.DEVICE_ID
     } | Connected: ${document.getElementById("ipInput").value}`;
 
-    // Init DB
     const req = indexedDB.open("RemoteDB_V2", 2);
     req.onupgradeneeded = (e) => {
       let db = e.target.result;
@@ -173,7 +179,6 @@ function handleAuth(msg) {
       Screen.loadGallery();
       Cam.loadVidGallery();
     };
-
     UI.showTab("apps");
     UI.logAction("Đã kết nối thành công!", true);
   } else {
@@ -196,15 +201,14 @@ function handleCommand(cmd, payload) {
       Cam.renderDevices(payload);
       break;
     case "RECORD_VIDEO":
-      Cam.handleRecord(payload);
-      break;
+      /* Server side rec removed */ break;
     case "GET_SCREENSHOT":
       Screen.handleShot(payload);
       break;
   }
 }
 
-// 4. MODULES LOGIC
+// 4. MODULES
 const Apps = {
   loadApps: () => Socket.send("GET_APPS"),
   render: (list) => {
@@ -214,13 +218,10 @@ const Apps = {
         (a) =>
           `<tr><td><strong>${a.path
             .split("\\")
-            .pop()}</strong><br><span class="app-title">${
-            a.title
-          }</span></td><td><button class="btn-danger" onclick="Apps.closeWin('${
-            a.hwnd
-          }','${encodeURIComponent(a.path)}','${
-            a.title
-          }')">Đóng</button></td></tr>`
+            .pop()}</strong><br><span class="app-title">${a.title}</span></td>
+      <td><button class="btn-danger" onclick="Apps.closeWin('${
+        a.hwnd
+      }','${encodeURIComponent(a.path)}','${a.title}')">Đóng</button></td></tr>`
       )
       .join("");
   },
@@ -320,7 +321,14 @@ const Screen = {
   },
   handleShot: (b64) => {
     const src = "data:image/jpeg;base64," + b64;
-    document.getElementById("screenImg").src = src;
+    const imgEl = document.getElementById("screenImg");
+    const streamEl = document.getElementById("screenStreamView");
+
+    // UI: Hien anh chup, an stream
+    imgEl.src = src;
+    imgEl.classList.add("show-view");
+    streamEl.classList.remove("show-view");
+
     if (App.isSavingScreenshot && App.db) {
       fetch(src)
         .then((r) => r.blob())
@@ -366,10 +374,15 @@ const Screen = {
     } else clearInterval(App.autoShotInt);
   },
   toggleScreenStream: (btn) => {
-    const view = document.getElementById("screenStreamView");
+    const streamView = document.getElementById("screenStreamView");
+    const imgView = document.getElementById("screenImg");
+
     if (btn === null) {
       App.isScreenStreamOn = false;
-      view.src = "";
+      streamView.src = "";
+      streamView.classList.remove("show-view");
+      imgView.classList.add("show-view"); // Hien lai khung anh (hoac den)
+
       const b = document.getElementById("btnToggleScreenStream");
       if (b) {
         b.textContent = "▶️ Bật Stream";
@@ -379,7 +392,13 @@ const Screen = {
     }
     App.isScreenStreamOn = !App.isScreenStreamOn;
     if (App.isScreenStreamOn) {
-      App.isCamStreamOn = false; // off cam
+      if (App.isCamStreamOn && window.toggleCamStream)
+        Cam.toggleCamStream(null); // Tat Cam
+
+      imgView.classList.remove("show-view");
+      streamView.classList.add("show-view");
+      streamView.src = ""; // Clear buffer
+
       btn.textContent = "⏹️ Tắt Stream";
       btn.classList.add("btn-danger");
       Socket.send("START_STREAM_SCREEN");
@@ -395,50 +414,55 @@ const Cam = {
   chunks: [],
   interval: null,
   isRec: false,
+  recTimeout: null,
+
   loadDevices: (force) => {
     if (force) Socket.send("REFRESH_DEVICES");
     else Socket.send("GET_DEVICES");
   },
   renderDevices: (data) => {
+    const cS = document.getElementById("camName");
     if (data.status === "refresh_pending") {
+      if (cS.options.length === 0)
+        cS.innerHTML = "<option>⏳ Đang quét...</option>";
       setTimeout(() => Socket.send("GET_DEVICES"), 2000);
       return;
     }
-    const cS = document.getElementById("camName"),
-      aS = document.getElementById("audioName");
-    cS.innerHTML = data.video
-      .map((v) => `<option value="${v}">${v}</option>`)
-      .join("");
-    aS.innerHTML = data.audio
-      .map((a) => `<option value="${a}">${a}</option>`)
-      .join("");
-    if (data.status === "not_ready") Cam.loadDevices(true);
+    cS.innerHTML = "";
+    if (data.video && data.video.length) {
+      data.video.forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        cS.appendChild(o);
+      });
+    } else {
+      cS.innerHTML = "<option>Không có cam</option>";
+    }
   },
+
+  // LOGIC MOI: Hen gio / Thu cong
   recordVideo: () => {
     if (!App.isCamStreamOn) return alert("Bật Stream trước!");
 
     const btn = document.getElementById("btnVid");
     const img = document.getElementById("camStreamView");
-    // BAN PHAI THEM <canvas id="recCanvas" style="display:none"></canvas> VAO client.html
-    let cvs = document.getElementById("recCanvas");
-    if (!cvs) {
-      cvs = document.createElement("canvas");
-      cvs.id = "recCanvas";
-      cvs.style.display = "none";
-      document.body.appendChild(cvs);
-    }
+    const cvs = document.getElementById("recCanvas");
+    const btnStream = document.getElementById("btnToggleCamStream");
 
     if (!Cam.isRec) {
-      // Start
-      cvs.width = 320;
-      cvs.height = 240;
+      // START
+      if (btnStream) btnStream.disabled = true;
+
+      cvs.width = 640;
+      cvs.height = 480;
       const ctx = cvs.getContext("2d");
       const stream = cvs.captureStream(25);
       Cam.chunks = [];
       try {
         Cam.recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
       } catch (e) {
-        Cam.recorder = new MediaRecorder(stream); // Fallback
+        Cam.recorder = new MediaRecorder(stream);
       }
 
       Cam.recorder.ondataavailable = (e) => {
@@ -457,22 +481,39 @@ const Cam = {
       };
 
       Cam.interval = setInterval(() => {
-        if (img.naturalWidth) ctx.drawImage(img, 0, 0, 320, 240);
+        if (img.naturalWidth) ctx.drawImage(img, 0, 0, 640, 480);
       }, 40);
 
       Cam.recorder.start();
       Cam.isRec = true;
       btn.textContent = "⏹️ DỪNG";
       btn.classList.add("btn-danger");
+
+      // Timer Mode check
+      const mode = document.querySelector(
+        'input[name="recMode"]:checked'
+      ).value;
+      if (mode === "timer") {
+        const sec = parseInt(document.getElementById("vidDur").value) || 10;
+        UI.logAction(`Đang quay hẹn giờ ${sec}s...`, true);
+        Cam.recTimeout = setTimeout(() => {
+          if (Cam.isRec) Cam.recordVideo();
+        }, sec * 1000);
+      } else {
+        UI.logAction("Đang quay thủ công...", true);
+      }
     } else {
-      // Stop
+      // STOP
       if (Cam.recorder) Cam.recorder.stop();
       if (Cam.interval) clearInterval(Cam.interval);
+      if (Cam.recTimeout) clearTimeout(Cam.recTimeout);
       Cam.isRec = false;
       btn.textContent = "🔴 QUAY";
       btn.classList.remove("btn-danger");
+      if (btnStream) btnStream.disabled = false;
     }
   },
+
   loadVidGallery: () => {
     if (!App.db) return;
     let h = "";
@@ -482,9 +523,8 @@ const Cam = {
       .openCursor(null, "prev").onsuccess = (e) => {
       let c = e.target.result;
       if (c) {
-        h += `<div class="gallery-item video-item"><video src="${URL.createObjectURL(
-          c.value.blob
-        )}" controls style="width:100%;height:80px"></video></div>`;
+        let u = URL.createObjectURL(c.value.blob);
+        h += `<div class="gallery-item video-item"><video src="${u}" controls style="width:100%;height:80px"></video></div>`;
         c.continue();
       } else document.getElementById("vidGallery").innerHTML = h || "Trống";
     };
@@ -501,22 +541,26 @@ const Cam = {
     if (btn === null) {
       App.isCamStreamOn = false;
       view.src = "";
+      view.removeAttribute("src"); // Hien man hinh den
+
       const b = document.getElementById("btnToggleCamStream");
       if (b) {
-        b.textContent = "▶️ Bật Stream";
+        b.textContent = "▶️ Stream";
         b.classList.remove("btn-danger");
+        b.disabled = false;
       }
+      if (Cam.isRec) Cam.recordVideo(); // Stop rec
       return;
     }
     App.isCamStreamOn = !App.isCamStreamOn;
     if (App.isCamStreamOn) {
-      App.isScreenStreamOn = false; // off screen
-      const c = document.getElementById("camName").value,
-        a = document.getElementById("audioName").value;
-      if (!c) return alert("Chưa chọn Cam");
+      if (App.isScreenStreamOn) Screen.toggleScreenStream(null); // Tat Screen
+
+      const c = document.getElementById("camName").value;
+      view.src = "";
       btn.textContent = "⏹️ Tắt Stream";
       btn.classList.add("btn-danger");
-      Socket.send("START_STREAM_CAM", { cam: c, audio: a });
+      Socket.send("START_STREAM_CAM", { cam: c, audio: "" });
     } else {
       Cam.toggleCamStream(null);
       Socket.send("STOP_STREAM");
@@ -530,7 +574,7 @@ const Sys = {
   },
 };
 
-// 5. START LOGIC
+// 5. STARTUP
 const History = {
   key: "remote_ip_history",
   load: () => {
@@ -539,7 +583,7 @@ const History = {
       h
         .map(
           (ip) =>
-            `<div class="history-item" onclick="document.getElementById('ipInput').value='${ip}'"><span>${ip}</span> <span style="color:red" onclick="event.stopPropagation();History.del('${ip}')">×</span></div>`
+            `<div class="history-item" onclick="document.getElementById('ipInput').value='${ip}'"><span>${ip}</span> <span style="color:var(--danger-color)" onclick="event.stopPropagation();History.del('${ip}')">×</span></div>`
         )
         .join("") || "<small>Trống</small>";
     if (h.length) document.getElementById("ipInput").value = h[0];
@@ -565,38 +609,28 @@ const History = {
 window.startConnection = () => {
   let ip = document.getElementById("ipInput").value.trim();
   if (!ip) return alert("Vui lòng nhập IP!");
-
-  // 1. Loai bo protocol thua neu nguoi dung lo copy paste
-  ip = ip
-    .replace("ws://", "")
-    .replace("wss://", "")
-    .replace("http://", "")
-    .replace("https://", "");
-  raw_ip = ip;
-  // 2. Tu dong xoa dau "/" o cuoi neu co (vd: 192.168.1.1/)
+  ip = ip.replace(/^(ws|http)s?:\/\//, "");
+  let raw_ip = ip;
   if (ip.endsWith("/")) ip = ip.slice(0, -1);
-
-  // 3. TU DONG THEM PORT 8080 (Neu chua co dau ":")
-  if (!ip.includes(":")) {
-    ip += ":8080";
-  }
-
-  // Luu IP (kem port) de dung cho viec tai video
+  if (!ip.includes(":")) ip += ":8080";
   App.serverIP = ip;
-
-  // Them vao lich su va ket noi
-  History.add(raw_ip); // Hien thi trong lich su se co kem :8080
+  History.add(raw_ip);
   Socket.init(ip);
-
-  document.getElementById("client-info").innerText =
-    "Đang kết nối tới " + raw_ip + "...";
+  document.getElementById("client-info").innerText = "CONNECTING...";
 };
-// Init
+
+// DOM helper for Rec Mode
+window.toggleRecMode = function () {
+  const mode = document.querySelector('input[name="recMode"]:checked').value;
+  document.getElementById("timerInputRow").style.display =
+    mode === "timer" ? "flex" : "none";
+};
+
+// INIT
+UI.initTheme();
 History.load();
-// Nếu người dùng nhấn Enter ở ô input
 document.getElementById("ipInput").addEventListener("keypress", (e) => {
   if (e.key === "Enter") startConnection();
 });
-if (document.getElementById("lblDeviceId")) {
+if (document.getElementById("lblDeviceId"))
   document.getElementById("lblDeviceId").textContent = App.DEVICE_ID;
-}

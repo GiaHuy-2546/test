@@ -1,7 +1,31 @@
 // modules/ui.js
-// (Khong import cac module tab de tranh loi phu thuoc vong)
 
-// --- LOGIC THANH TRUOT (SLIDER) ---
+// --- 1. LOGIC THEME (MOI) ---
+export function toggleTheme() {
+  const body = document.body;
+  body.classList.toggle("dark-mode");
+
+  // Luu trang thai vao LocalStorage
+  if (body.classList.contains("dark-mode")) {
+    localStorage.setItem("theme", "dark");
+  } else {
+    localStorage.setItem("theme", "light");
+  }
+}
+
+// Khoi tao Theme khi tai trang
+function initTheme() {
+  const savedTheme = localStorage.getItem("theme");
+  // Mac dinh la Light, neu luu Dark thi bat len
+  if (savedTheme === "dark") {
+    document.body.classList.add("dark-mode");
+  }
+}
+// Goi ngay lap tuc
+initTheme();
+
+// --- 2. LOGIC THANH TRUOT (SLIDER) ---
+// (Giữ nguyên code cũ)
 function moveSlider(targetButton) {
   const slider = document.getElementById("tab-slider");
   if (!slider || !targetButton) return;
@@ -19,8 +43,9 @@ export function handleTabLeave() {
     moveSlider(activeButton);
   }
 }
-// --- KET THUC LOGIC SLIDER ---
 
+// --- 3. LOG & TAB UTILS ---
+// (Giữ nguyên code cũ)
 export function logActionUI(msg, success) {
   const list = document.getElementById("actionLogList");
   if (list) {
@@ -38,9 +63,6 @@ export function toggleActionLog() {
   }
 }
 
-/**
- * @brief Ham chinh de chuyen doi giao dien tab (CHI GIAO DIEN)
- */
 export function showTab(id) {
   document
     .querySelectorAll(".tab-content")
@@ -52,14 +74,13 @@ export function showTab(id) {
   const btn = document.querySelector(`button[onclick="showTab('${id}')"]`);
   if (btn) {
     btn.classList.add("active");
-    moveSlider(btn); // Di chuyen slider den nut vua click
+    moveSlider(btn);
   }
 
   const tabContent = document.getElementById("tab-" + id);
   if (tabContent) {
     tabContent.classList.add("active");
   }
-  // (app.js se chiu trach nhiem tai du lieu)
 }
 
 export function filterTable(tid, col, txt) {

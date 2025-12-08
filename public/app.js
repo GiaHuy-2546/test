@@ -4,6 +4,7 @@ import { onCommand, sendCommand } from "./modules/socket.js";
 import {
   logActionUI,
   toggleActionLog,
+  toggleTheme,
   showTab as uiShowTab,
   filterTable,
   handleTabHover,
@@ -48,6 +49,7 @@ const showTab = (id) => {
     }
   }
 };
+window.toggleTheme = toggleTheme;
 window.logActionUI = logActionUI;
 window.toggleActionLog = toggleActionLog;
 window.showTab = showTab;
