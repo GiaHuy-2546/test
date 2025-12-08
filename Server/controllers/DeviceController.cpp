@@ -1,11 +1,12 @@
-// controllers/DeviceController.cpp (FIXED: KEEP-ALIVE LOOP)
+// controllers/DeviceController.cpp (FINAL FIXED: COM INIT ADDED)
 #include "DeviceController.h"
 #include "../utils/helpers.h"
 #include "../utils/logging.h"
 #include "../utils/escapi.h"
 #include <sstream>
 #include <thread>
-#include <algorithm> // Can cho std::find
+#include <algorithm>
+#include <objbase.h> // Can thiet cho CoInitialize
 
 using namespace std;
 using namespace Gdiplus;
@@ -22,10 +23,14 @@ std::atomic<bool> DeviceController::isStreaming(false);
 string rawToJpeg(int *rawPixels, int w, int h)
 {
     Bitmap bmp(w, h, w * 4, PixelFormat32bppARGB, (BYTE *)rawPixels);
-    CLSID clsid;
-    GetEncoderClsid(L"image/jpeg", &clsid);
+    if (bmp.GetLastStatus() != Ok)
+        return "";
 
-    ULONG quality = 75; // Chat luong JPEG (0-100)
+    CLSID clsid;
+    if (GetEncoderClsid(L"image/jpeg", &clsid) < 0)
+        return "";
+
+    ULONG quality = 75; // Chat luong 75
     EncoderParameters eps;
     eps.Count = 1;
     eps.Parameter[0].Guid = EncoderQuality;
@@ -34,10 +39,15 @@ string rawToJpeg(int *rawPixels, int w, int h)
     eps.Parameter[0].Value = &quality;
 
     IStream *pStream = NULL;
+    // QUAN TRONG: CreateStreamOnHGlobal can moi truong COM (CoInitialize)
     if (CreateStreamOnHGlobal(NULL, TRUE, &pStream) != S_OK)
         return "";
 
-    bmp.Save(pStream, &clsid, &eps);
+    if (bmp.Save(pStream, &clsid, &eps) != Ok)
+    {
+        pStream->Release();
+        return "";
+    }
 
     LARGE_INTEGER liZero = {};
     ULARGE_INTEGER pos = {};
@@ -76,7 +86,6 @@ void DeviceController::buildDeviceListJson()
         getCaptureDeviceName(i, name, 256);
         json_ss << (i ? "," : "") << "\"" << jsonEscape(string(name)) << "\"";
     }
-    // Audio fake
     json_ss << "],\"audio\":[\"Microphone (Client-side)\"]}";
 
     {
@@ -98,65 +107,86 @@ string DeviceController::getDevices(bool refresh)
     return G_DEVICE_LIST_JSON;
 }
 
-// --- 2. STREAMING ---
+// --- 2. STREAMING WORKER ---
 void DeviceController::broadcastWorker(string camName)
 {
+    // === FIX LOI STREAM TAT: Khoi tao COM cho luong nay ===
+    HRESULT hr = CoInitialize(NULL);
+    if (FAILED(hr))
+    {
+        logConsole("CAM", "Loi CoInitialize! Stream khong the bat.");
+        return;
+    }
+
     logConsole("CAM", "Bat dau luong camera: " + camName);
 
     if (setupESCAPI() == 0)
+    {
+        CoUninitialize();
         return;
+    }
 
     int devIndex = 0;
     int count = countCaptureDevices();
     char nameBuf[256];
 
+    bool found = false;
     for (int i = 0; i < count; i++)
     {
         getCaptureDeviceName(i, nameBuf, 256);
         if (camName.find(nameBuf) != string::npos)
         {
             devIndex = i;
+            found = true;
             break;
         }
     }
+    if (!found && count > 0)
+        devIndex = 0;
 
     SimpleCapParams capture;
     capture.mWidth = 640;
     capture.mHeight = 480;
     capture.mTargetBuf = new int[capture.mWidth * capture.mHeight];
 
-    // Khoi tao camera
+    // ESCAPI init
     initCapture(devIndex, &capture);
 
     while (isStreaming)
     {
         doCapture(devIndex);
 
-        int timeout = 100;
+        int timeout = 20; // 200ms timeout
         while (isCaptureDone(devIndex) == 0 && timeout-- > 0)
+        {
             Sleep(10);
+        }
 
         if (isCaptureDone(devIndex))
         {
+            // Nen JPEG (Can COM)
             string jpgData = rawToJpeg(capture.mTargetBuf, capture.mWidth, capture.mHeight);
 
-            lock_guard<mutex> lock(streamMutex);
-            if (viewingClients.empty())
+            if (!jpgData.empty())
             {
-                isStreaming = false;
-                break;
-            }
-
-            for (auto it = viewingClients.begin(); it != viewingClients.end();)
-            {
-                if (!sendStreamFrame(*it, jpgData))
+                lock_guard<mutex> lock(streamMutex);
+                if (viewingClients.empty())
                 {
-                    closesocket(*it);
-                    it = viewingClients.erase(it);
+                    isStreaming = false;
+                    break;
                 }
-                else
+
+                for (auto it = viewingClients.begin(); it != viewingClients.end();)
                 {
-                    ++it;
+                    if (!sendStreamFrame(*it, jpgData))
+                    {
+                        closesocket(*it);
+                        it = viewingClients.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
                 }
             }
         }
@@ -166,6 +196,9 @@ void DeviceController::broadcastWorker(string camName)
     deinitCapture(devIndex);
     delete[] capture.mTargetBuf;
     logConsole("CAM", "Da dung luong camera.");
+
+    // Huy COM khi het luong
+    CoUninitialize();
 }
 
 void DeviceController::handleStreamCam(SOCKET client, const string &clientIP, const string &cam, const string &audio)
@@ -179,19 +212,16 @@ void DeviceController::handleStreamCam(SOCKET client, const string &clientIP, co
             isStreaming = true;
             std::thread(&DeviceController::broadcastWorker, this, cam).detach();
         }
-    } // Unlock mutex de thread khac chay
+    }
 
-    // === QUAN TRONG: Vong lap giu ket noi ===
-    // Neu khong co doan nay, ham se return ngay -> socket bi dong -> stream tat
+    // Loop giu ket noi
     char dummy[10];
     while (true)
     {
-        // Cho tin hieu tu client (Gateway). Neu Gateway ngat, recv tra ve <= 0
         if (recv(client, dummy, sizeof(dummy), 0) <= 0)
             break;
     }
 
-    // Khi thoat vong lap, xoa client khoi danh sach xem
     {
         lock_guard<mutex> lock(streamMutex);
         auto it = std::find(viewingClients.begin(), viewingClients.end(), client);

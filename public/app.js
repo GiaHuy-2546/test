@@ -18,21 +18,23 @@ import * as keylogTab from "./modules/tab-keylog.js";
 import * as sysTab from "./modules/tab-sys.js";
 
 const showTab = (id) => {
-  const wasScreenStreaming = store.isScreenStreamOn;
-  const wasCamStreaming = store.isCamStreamOn;
-  uiShowTab(id);
+  // === LOGIC MỚI: DỪNG TOÀN BỘ STREAM KHI CHUYỂN TAB ===
+  // Bất kể đang ở tab nào, cứ bấm chuyển tab là tắt hết stream cho an toàn
+  if (store.isScreenStreamOn || store.isCamStreamOn) {
+    logActionUI("Chuyển tab -> Dừng tất cả Stream.", true);
 
-  if (
-    (wasScreenStreaming || wasCamStreaming) &&
-    id !== "screen" &&
-    id !== "cam"
-  ) {
-    logActionUI("Chuyển tab đã ngắt luồng stream.", true);
-    if (wasScreenStreaming) window.toggleScreenStream(null);
-    if (wasCamStreaming) window.toggleCamStream(null);
+    // 1. Reset UI và biến trạng thái Client
+    if (store.isScreenStreamOn) window.toggleScreenStream(null);
+    if (store.isCamStreamOn) window.toggleCamStream(null);
+
+    // 2. Gửi lệnh ngắt kết nối lên Server
     sendCommand("STOP_STREAM");
   }
 
+  // === CHUYỂN GIAO DIỆN TAB ===
+  uiShowTab(id);
+
+  // === TẢI DỮ LIỆU CHO TAB MỚI ===
   if (store.socketReady) {
     if (id === "apps") {
       appTab.loadApps();
@@ -46,7 +48,6 @@ const showTab = (id) => {
     }
   }
 };
-
 window.logActionUI = logActionUI;
 window.toggleActionLog = toggleActionLog;
 window.showTab = showTab;

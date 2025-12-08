@@ -231,7 +231,26 @@
       </div>
       <div id="tab-cam" class="tab-content">
         <div class="card">
-          <h3>Quay Video (Ghi ra file)</h3>
+          <h3>Cấu hình & Quay Video</h3>
+
+          <div class="control-row" style="margin-bottom: 10px">
+            <label for="camName" style="width: 100px">Camera:</label>
+            <select id="camName" class="input-field"></select>
+          </div>
+          <div class="control-row" style="margin-bottom: 10px; display: none">
+            <label for="audioName" style="width: 100px">Microphone:</label>
+            <select id="audioName" class="input-field"></select>
+          </div>
+          <div
+            class="control-row"
+            style="justify-content: center; margin-bottom: 15px"
+          >
+            <button class="btn-refresh" onclick="loadDevices(true)">
+              🔄 Tải Lại Danh Sách Thiết Bị
+            </button>
+          </div>
+
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0" />
 
           <div
             class="control-row"
@@ -258,7 +277,11 @@
             </label>
           </div>
 
-          <div class="control-row" id="timerInputRow">
+          <div
+            class="control-row"
+            id="timerInputRow"
+            style="justify-content: center"
+          >
             <div class="vid-duration-wrapper">
               <label>Thời lượng:</label>
               <input
@@ -287,8 +310,8 @@
         </div>
 
         <div class="card">
-          <h3>📹 Livestream Camera (~20 FPS)</h3>
-          <p>Chọn thiết bị từ danh sách ở trên trước khi bấm Bật Stream.</p>
+          <h3>📹 Livestream Camera (~25 FPS)</h3>
+          <p>Chọn thiết bị ở trên trước khi bấm Bật Stream.</p>
           <div class="control-row" style="justify-content: center">
             <button
               id="btnToggleCamStream"
@@ -304,6 +327,7 @@
             class="status"
             style="text-align: center"
           ></div>
+
           <div class="screen-box" style="background: #000; margin-top: 15px">
             <img
               id="camStreamView"
@@ -312,6 +336,7 @@
             />
           </div>
         </div>
+
         <div class="card">
           <div class="card-head">
             <h3>Thư Viện Video (Cache)</h3>

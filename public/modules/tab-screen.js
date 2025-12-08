@@ -3,13 +3,11 @@ import { store } from "./store.js";
 import { sendCommand } from "./socket.js";
 import { logActionUI } from "./ui.js";
 
-// MOI: Dang ky ham xu ly screenshot base64
 export function handleScreenshotData(payload) {
   const imgData = "data:image/jpeg;base64," + payload;
   document.getElementById("screenImg").src = imgData;
 
   if (store.isSavingScreenshot && store.db) {
-    // Chuyen base64 sang Blob de luu
     fetch(imgData)
       .then((res) => res.blob())
       .then((blob) => {
@@ -39,7 +37,6 @@ export function toggleAutoShot(cb) {
   }
 }
 
-// (Ham loadGallery, clearGallery khong doi)
 export function loadGallery() {
   if (!store.db) return;
   let h = "";
@@ -77,10 +74,14 @@ export function toggleScreenStream(btn) {
   const streamView = document.getElementById("screenStreamView");
   const streamStatus = document.getElementById("screenStreamStatus");
 
+  // --- TRUONG HOP TAT STREAM ---
   if (btn === null) {
     store.isScreenStreamOn = false;
+
+    // YEU CAU 2: XOA ANH CU (VE MAN HINH DEN)
+    streamView.removeAttribute("src");
     streamView.src = "";
-    streamView.alt = "Stream đã tắt.";
+
     const activeBtn = document.getElementById("btnToggleScreenStream");
     if (activeBtn) {
       activeBtn.textContent = "▶️ Bật Stream Màn Hình";
@@ -91,12 +92,17 @@ export function toggleScreenStream(btn) {
     return;
   }
 
+  // --- LOGIC BAT/TAT ---
   store.isScreenStreamOn = !store.isScreenStreamOn;
 
   if (store.isScreenStreamOn) {
-    // (Toan bo code Bat Stream... giu nguyen)
-    store.isCamStreamOn = false;
-    document.getElementById("camStreamView").src = "";
+    // YEU CAU 3: NGAT STREAM CAM (NEU DANG CHAY)
+    if (store.isCamStreamOn) {
+      if (window.toggleCamStream) window.toggleCamStream(null);
+    }
+
+    // Reset view
+    streamView.src = "";
 
     streamView.alt = "Đang tải luồng...";
     btn.textContent = "⏹️ Tắt Stream Màn Hình";
@@ -107,19 +113,17 @@ export function toggleScreenStream(btn) {
 
     sendCommand("START_STREAM_SCREEN");
   } else {
-    // Logic khi tat stream bang nut
-    streamView.src = ""; // Xoa nguon anh
+    // Tat thu cong
+    streamView.removeAttribute("src");
+    streamView.src = "";
     streamView.alt = "Stream đã tắt.";
-    const activeBtn = document.getElementById("btnToggleScreenStream");
-    if (activeBtn) {
-      activeBtn.textContent = "▶️ Bật Stream Màn Hình";
-      activeBtn.classList.remove("btn-danger");
-      activeBtn.classList.add("btn-primary");
-    }
+
+    btn.textContent = "▶️ Bật Stream Màn Hình";
+    btn.classList.remove("btn-danger");
+    btn.classList.add("btn-primary");
     streamStatus.textContent = "";
     logActionUI("Tắt livestream màn hình", true);
 
-    // === FIX: Gui lenh dung ===
     sendCommand("STOP_STREAM");
   }
 }
