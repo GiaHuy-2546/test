@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Điều khiển máy tính từ xa (WebSocket)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Điều khiển máy tính từ xa</h1>
+        <div id="client-info" class="client-info">Đang kết nối...</div>
+      </header>
+
+      <div class="tabs-scroll">
+        <div class="tabs" onmouseleave="handleTabLeave()">
+          <button
+            class="tab-btn active"
+            onclick="showTab('apps')"
+            onmouseenter="handleTabHover(this)"
+          >
+            🖥️ Ứng dụng
+          </button>
+          <button
+            class="tab-btn"
+            onclick="showTab('procs')"
+            onmouseenter="handleTabHover(this)"
+          >
+            ⚙️ Tiến trình
+          </button>
+          <button
+            class="tab-btn"
+            onclick="showTab('screen')"
+            onmouseenter="handleTabHover(this)"
+          >
+            📸 Màn hình
+          </button>
+          <button
+            class="tab-btn"
+            onclick="showTab('keylog')"
+            onmouseenter="handleTabHover(this)"
+          >
+            ⌨️ Bắt phím
+          </button>
+          <button
+            class="tab-btn"
+            onclick="showTab('cam')"
+            onmouseenter="handleTabHover(this)"
+          >
+            📹 Camera
+          </button>
+          <button
+            class="tab-btn"
+            onclick="showTab('sys')"
+            onmouseenter="handleTabHover(this)"
+          >
+            🔌 Hệ thống
+          </button>
+          <div id="tab-slider"></div>
+        </div>
+      </div>
+
+      <div id="tab-apps" class="tab-content active">
+        <div class="card">
+          <h3>Mở Ứng Dụng</h3>
+          <div class="control-row">
+            <input id="cmdApp" type="text" placeholder="Tên (vd: chrome)..." />
+            <button
+              onclick="startCmd('cmdApp', 'statusApp')"
+              class="btn-primary"
+            >
+              Mở ngay
+            </button>
+          </div>
+          <div id="statusApp" class="status"></div>
+          <div id="recentApps" class="recent-list">
+            <small>Gần đây:</small>
+            <div id="recentListTags"></div>
+          </div>
+        </div>
+        <div class="card full-height">
+          <div class="card-head">
+            <h3>Cửa Sổ Đang Mở</h3>
+            <button onclick="loadApps()" class="btn-refresh">🔄 Tải lại</button>
+          </div>
+          <input
+            id="searchApps"
+            class="search-box"
+            placeholder="🔍 Lọc..."
+            oninput="filterTable('appsTable', 0, this.value)"
+          />
+          <div class="table-wrapper">
+            <table id="appsTable">
+              <thead>
+                <tr>
+                  <th>Tên ứng dụng & Tiêu đề</th>
+                  <th width="80">Hành động</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-procs" class="tab-content">
+        <div class="card">
+          <h3>Chạy Process</h3>
+          <div class="control-row">
+            <input id="cmdProc" type="text" placeholder="Tên process..." />
+            <button
+              onclick="startCmd('cmdProc', 'statusProc')"
+              class="btn-primary"
+            >
+              Chạy
+            </button>
+          </div>
+          <div id="statusProc" class="status"></div>
+        </div>
+        <div class="card full-height">
+          <div class="card-head">
+            <h3>Danh Sách Process</h3>
+            <button onclick="loadProcs()" class="btn-refresh">
+              🔄 Tải lại
+            </button>
+          </div>
+          <input
+            id="searchProcs"
+            class="search-box"
+            placeholder="🔍 Lọc..."
+            oninput="filterTable('procTable', 1, this.value)"
+          />
+          <div class="table-wrapper">
+            <table id="procTable">
+              <thead>
+                <tr>
+                  <th width="80">PID</th>
+                  <th>Tên File</th>
+                  <th width="80">Hành động</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-screen" class="tab-content">
+        <div class="card">
+          <div class="control-row">
+            <button onclick="updateScreen(true)" class="btn-primary">
+              📸 Chụp & Lưu
+            </button>
+            <label
+              ><input
+                type="checkbox"
+                id="autoShot"
+                onchange="toggleAutoShot(this)"
+              />
+              Tự động (2s)</label
+            >
+          </div>
+          <div class="screen-box">
+            <img id="screenImg" src="" alt="Chưa có ảnh" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Thư Viện Ảnh (Cache)</h3>
+            <button onclick="clearGallery()" class="btn-danger">
+              Xóa tất cả
+            </button>
+          </div>
+          <div id="gallery" class="gallery-grid"></div>
+        </div>
+
+        <div class="card">
+          <h3>🖥️ Livestream Màn Hình (~33 FPS)</h3>
+          <div class="control-row" style="justify-content: center">
+            <button
+              id="btnToggleScreenStream"
+              onclick="toggleScreenStream(this)"
+              class="btn-primary"
+              style="min-width: 150px"
+            >
+              ▶️ Bật Stream
+            </button>
+          </div>
+          <div
+            id="screenStreamStatus"
+            class="status"
+            style="text-align: center"
+          ></div>
+          <div class="screen-box" style="background: #000; margin-top: 15px">
+            <img
+              id="screenStreamView"
+              alt="Bấm 'Bật Stream' để bắt đầu"
+              style="max-width: 100%; display: block"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-keylog" class="tab-content">
+        <div class="card">
+          <div class="card-head">
+            <h3>Nhật Ký Bàn Phím</h3>
+            <label class="keylog-toggle-label">
+              <input
+                type="checkbox"
+                id="chkKeylog"
+                onchange="toggleKeylog(this)"
+                class="keylog-toggle-cb"
+              />
+              <strong>Bắt phím</strong>
+            </label>
+          </div>
+          <textarea
+            id="logArea"
+            readonly
+            placeholder="Tick vào ô trên để bắt đầu ghi..."
+          ></textarea>
+          <div class="control-row" style="justify-content: flex-end">
+            <button onclick="clearLogs()" class="btn-danger">
+              Xóa Nhật Ký
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="tab-cam" class="tab-content">
+        <div class="card">
+          <h3>Quay Video (Ghi ra file)</h3>
+          <div class="control-row" style="margin-bottom: 10px">
+            <label for="camName" style="width: 100px">Camera:</label>
+            <select id="camName" class="input-field"></select>
+          </div>
+          <div class="control-row" style="margin-bottom: 10px">
+            <label for="audioName" style="width: 100px">Microphone:</label>
+            <select id="audioName" class="input-field"></select>
+          </div>
+          <div
+            class="control-row"
+            style="justify-content: center; margin-bottom: 15px"
+          >
+            <button class="btn-refresh" onclick="loadDevices(true)">
+              🔄 Tải Lại Danh Sách Thiết Bị
+            </button>
+          </div>
+          <div class="control-row">
+            <div class="vid-duration-wrapper">
+              <input
+                type="number"
+                id="vidDur"
+                value="5"
+                min="1"
+                max="300"
+                style="width: 70px; text-align: center"
+              />
+              <label>giây (Tối đa 300s)</label>
+            </div>
+            <button id="btnVid" onclick="recordVideo()" class="btn-primary">
+              🔴 QUAY
+            </button>
+          </div>
+          <div id="vidStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h3>📹 Livestream Camera (~20 FPS)</h3>
+          <p>Chọn thiết bị từ danh sách ở trên trước khi bấm Bật Stream.</p>
+          <div class="control-row" style="justify-content: center">
+            <button
+              id="btnToggleCamStream"
+              onclick="toggleCamStream(this)"
+              class="btn-primary"
+              style="min-width: 150px"
+            >
+              ▶️ Bật Stream
+            </button>
+          </div>
+          <div
+            id="camStreamStatus"
+            class="status"
+            style="text-align: center"
+          ></div>
+          <div class="screen-box" style="background: #000; margin-top: 15px">
+            <img
+              id="camStreamView"
+              alt="Bấm 'Bật Stream' để bắt đầu"
+              style="max-width: 100%; display: block"
+            />
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Thư Viện Video (Cache)</h3>
+            <button onclick="clearVideos()" class="btn-danger">Xóa hết</button>
+          </div>
+          <div id="vidGallery" class="gallery-grid"></div>
+        </div>
+      </div>
+      <div id="tab-sys" class="tab-content">
+        <div class="card warning-zone">
+          <h3>⚠️ Khu Vực Nguy Hiểm</h3>
+          <div
+            class="control-row"
+            style="justify-content: center; margin-top: 20px"
+          >
+            <button onclick="sendPower('shutdown')" class="btn-danger big-btn">
+              🛑 SHUTDOWN
+            </button>
+            <button
+              onclick="sendPower('restart')"
+              class="btn-refresh big-btn"
+              style="background: #ffc107; color: #000"
+            >
+              🔄 RESTART
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-info-box">
+      <strong>Project web + app điều khiển máy tính từ xa:</strong><br />
+      Võ Lê Gia Huy - 24122004 === Lê Bảo Phúc - 24122021 === Trần Xuân Bách -
+      24122028
+    </div>
+
+    <div id="actionLogContainer" class="action-log-container">
+      <div class="action-log-header">
+        <span>📋 Nhật ký thao tác</span>
+        <button
+          onclick="toggleActionLog()"
+          style="padding: 2px 6px; font-size: 12px"
+        >
+          _
+        </button>
+      </div>
+      <div id="actionLogList" class="action-log-list"></div>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

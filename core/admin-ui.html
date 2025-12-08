@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng Điều Khiển Server</title>
+    <style>
+      :root {
+        --c-bg: #222;
+        --c-bg-panel: #1a1a1a;
+        --c-border: #444;
+        --c-text: #eee;
+        --c-system: #ffcc80;
+        --c-cpp: #81d4fa;
+        --c-gateway: #c5e1a5;
+        --c-err: #ef9a9a;
+        --c-pending: #ffab91;
+        --c-approved: #a5d6a7;
+        --c-rejected: #ef9a9a;
+        --c-online: #69f0ae;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: var(--c-bg);
+        color: var(--c-text);
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      header {
+        background: #333;
+        padding: 15px 20px;
+        box-shadow: 0 2px 5px #000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+      }
+      .controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+      button {
+        font-size: 14px;
+        padding: 8px 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        font-weight: 600;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      button:active {
+        filter: brightness(0.9);
+      }
+      button:disabled {
+        background: #555;
+        cursor: not-allowed;
+      }
+      #btnStart {
+        background: #28a745;
+        color: white;
+      }
+      #btnStop {
+        background: #dc3545;
+        color: white;
+      }
+      #btnCloseAdmin {
+        background: #777;
+        color: white;
+      }
+      #status {
+        font-weight: bold;
+      }
+
+      #access-panel {
+        background: #2a2a2a;
+        padding: 10px 20px;
+        border-bottom: 1px solid #000;
+      }
+      #access-panel h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: var(--c-system);
+      }
+      .ip-list {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .ip-item {
+        background: #555;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ip-item button {
+        font-size: 12px;
+        padding: 2px 6px;
+        background: #eee;
+        color: #000;
+        font-weight: normal;
+      }
+
+      .main-content {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+
+      #client-manager {
+        flex-basis: 350px;
+        flex-shrink: 0;
+        background: #2a2a2a;
+        border-right: 1px solid #000;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .client-list-section {
+        padding: 15px;
+        border-bottom: 1px solid #444;
+      }
+      .client-list-section h3 {
+        margin: 0 0 10px 0;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #555;
+      }
+      .client-list-section h3.pending {
+        color: var(--c-pending);
+      }
+      .client-list-section h3.approved {
+        color: var(--c-approved);
+      }
+      .client-list-section h3.rejected {
+        color: var(--c-rejected);
+      }
+      .client-list {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .client-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 5px;
+        border-radius: 4px;
+        background: #3a3a3a;
+        margin-bottom: 5px;
+        font-family: monospace;
+      }
+      /* === FIX 3: Dinh dang cho Device ID === */
+      .client-id {
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+      .client-id.online {
+        color: var(--c-online);
+        text-shadow: 0 0 5px var(--c-online);
+      }
+      .client-id.online::before {
+        content: "● ";
+        color: var(--c-online);
+      }
+      .client-id.offline {
+        color: #999;
+      }
+      .client-id.offline::before {
+        content: "○ ";
+        color: #999;
+      }
+      /* === KET THUC FIX 3 === */
+
+      .client-actions button {
+        font-size: 12px;
+        padding: 4px 8px;
+        margin-left: 5px;
+      }
+      .btn-approve {
+        background: var(--c-approved);
+        color: #000;
+      }
+      .btn-reject {
+        background: var(--c-rejected);
+        color: #000;
+      }
+
+      #log-panel {
+        flex: 1;
+        background: var(--c-bg-panel);
+        font-family: monospace;
+        font-size: 14px;
+        overflow-y: scroll;
+        padding: 10px;
+      }
+      .log-line {
+        display: flex;
+        padding: 3px 5px;
+        border-radius: 3px;
+      }
+      .log-line:hover {
+        background: #333;
+      }
+      .log-client-ip {
+        flex-basis: 180px;
+        flex-shrink: 0;
+        color: #999;
+        text-align: right;
+        margin-right: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .log-source {
+        flex-basis: 120px;
+        flex-shrink: 0;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+      .log-message {
+        flex: 1;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .log-ip-SYSTEM {
+        color: var(--c-system);
+        font-weight: bold;
+      }
+      .log-source-C\+\+Server {
+        color: var(--c-cpp);
+      }
+      .log-source-Gateway\.js {
+        color: var(--c-gateway);
+      }
+      .log-source-AdminPanel {
+        color: var(--c-system);
+      }
+      .log-source-C\+\+Server\(ERR\) {
+        color: var(--c-err);
+      }
+      .log-source-Gateway\.js\(ERR\) {
+        color: var(--c-err);
+      }
+      .log-source-AdminPanel\(ERR\) {
+        color: var(--c-err);
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="controls">
+        <button id="btnStart">▶️ Start Servers</button>
+        <button id="btnStop" disabled>⏹️ Stop Servers</button>
+        <div id="status">Trạng thái: 🔴 Đã dừng</div>
+      </div>
+      <button id="btnCloseAdmin">Tắt & Đóng Panel</button>
+    </header>
+
+    <div id="access-panel">
+      <h3>Địa chỉ truy cập cho Client (trên cùng mạng LAN):</h3>
+      <div id="ip-list" class="ip-list">
+        <div class="ip-item">
+          http://localhost:8080
+          <button onclick="copyToClipboard('http://localhost:8080')">
+            Copy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div id="client-manager">
+        <div class="client-list-section">
+          <h3 class="pending">Chờ duyệt (<span id="pending-count">0</span>)</h3>
+          <div id="pending-list" class="client-list"></div>
+        </div>
+        <div class="client-list-section">
+          <h3 class="approved">Đồng ý (<span id="approved-count">0</span>)</h3>
+          <div id="approved-list" class="client-list"></div>
+        </div>
+        <div class="client-list-section">
+          <h3 class="rejected">Từ chối (<span id="rejected-count">0</span>)</h3>
+          <div id="rejected-list" class="client-list"></div>
+        </div>
+      </div>
+
+      <div id="log-panel"></div>
+    </div>
+
+    <script>
+      const ws = new WebSocket(`ws://${window.location.host}`);
+      const logPanel = document.getElementById("log-panel");
+      const statusEl = document.getElementById("status");
+      const btnStart = document.getElementById("btnStart");
+      const btnStop = document.getElementById("btnStop");
+      const btnCloseAdmin = document.getElementById("btnCloseAdmin");
+      const ipListEl = document.getElementById("ip-list");
+
+      const pendingListEl = document.getElementById("pending-list");
+      const approvedListEl = document.getElementById("approved-list");
+      const rejectedListEl = document.getElementById("rejected-list");
+      const pendingCountEl = document.getElementById("pending-count");
+      const approvedCountEl = document.getElementById("approved-count");
+      const rejectedCountEl = document.getElementById("rejected-count");
+
+      const ipColorMap = new Map();
+      const colorPalette = [
+        "#FFB3BA",
+        "#FFDFBA",
+        "#FFFFBA",
+        "#BAFFC9",
+        "#BAE1FF",
+        "#E0BBE4",
+        "#FFC72C",
+        "#FBEAEB",
+        "#B2F7EF",
+        "#D8BFD8",
+      ];
+      let colorIndex = 0;
+
+      function getIpColor(ip) {
+        if (ip === "SYSTEM" || ip.startsWith("AdminPanel"))
+          return "var(--c-system)";
+        const baseIp = ip.split(":")[0];
+        if (!ipColorMap.has(baseIp)) {
+          ipColorMap.set(
+            baseIp,
+            colorPalette[colorIndex % colorPalette.length]
+          );
+          colorIndex++;
+        }
+        return ipColorMap.get(baseIp);
+      }
+
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(
+          () => {
+            alert("Đã copy: " + text);
+          },
+          () => {
+            alert("Copy thất bại!");
+          }
+        );
+      }
+      window.copyToClipboard = copyToClipboard;
+
+      function approveClient(id) {
+        ws.send(JSON.stringify({ command: "APPROVE_ID", id: id }));
+      }
+      function rejectClient(id) {
+        ws.send(JSON.stringify({ command: "REJECT_ID", id: id }));
+      }
+      window.approveClient = approveClient;
+      window.rejectClient = rejectClient;
+
+      // === FIX 3: Ve lai danh sach dung Device ID ===
+      function updateClientLists(lists) {
+        pendingCountEl.textContent = lists.pending.length;
+        approvedCountEl.textContent = lists.approved.length;
+        rejectedCountEl.textContent = lists.rejected.length;
+
+        // Dinh dang: [ [id, {ip, lastSocket, ...}], ... ]
+        pendingListEl.innerHTML = lists.pending
+          .map(
+            ([id, data]) => `
+                <div class="client-item" title="Device ID: ${id}\nIP: ${
+              data.ip
+            }\nFirst Seen: ${new Date(data.firstSeen).toLocaleString()}">
+                    <div>
+                      <div class="client-id">${id}</div>
+                    </div>
+                    <span class="client-actions">
+                        <button class="btn-approve" onclick="approveClient('${id}')">Duyệt</button>
+                        <button class="btn-reject" onclick="rejectClient('${id}')">Từ chối</button>
+                    </span>
+                </div>
+            `
+          )
+          .join("");
+
+        approvedListEl.innerHTML = lists.approved
+          .map(([id, data]) => {
+            const isOnline = lists.online.includes(id);
+            const statusClass = isOnline ? "online" : "offline";
+            return `
+                <div class="client-item" title="Device ID: ${id}\nIP: ${data.ip}">
+                    <div>
+                      <div class="client-id ${statusClass}">${id}</div>
+                    </div>
+                    <span class="client-actions">
+                        <button class="btn-reject" onclick="rejectClient('${id}')">Chặn</button>
+                    </span>
+                </div>
+            `;
+          })
+          .join("");
+
+        rejectedListEl.innerHTML = lists.rejected
+          .map(
+            ([id, data]) => `
+                <div class="client-item" title="Device ID: ${id}\nIP: ${data.ip}">
+                    <div>
+                      <div class="client-id offline">${id}</div>
+                    </div>
+                    <span class="client-actions">
+                        <button class="btn-approve" onclick="approveClient('${id}')">Gỡ chặn</button>
+                    </span>
+                </div>
+            `
+          )
+          .join("");
+      }
+
+      ws.onopen = () => {
+        logPanel.innerHTML = "";
+        const p = document.createElement("div");
+        p.className = "log-line";
+        p.innerHTML = `<span class="log-client-ip log-ip-SYSTEM">[SYSTEM]</span>
+                         <span class="log-source log-source-AdminPanel">[AdminPanel]</span>
+                         <span class="log-message">Đã kết nối với Bảng Điều Khiển.</span>`;
+        logPanel.appendChild(p);
+        statusEl.textContent = "Trạng thái: 🔴 Đã dừng";
+        statusEl.style.color = "#ef9a9a";
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "CLIENT_LIST_UPDATE") {
+          updateClientLists(data.lists);
+          return;
+        }
+
+        if (data.type === "INIT_DATA") {
+          let html =
+            '<div class="ip-item">http://localhost:8080 <button onclick="copyToClipboard(\'http://localhost:8080\')">Copy</button></div>';
+          data.accessURLs.forEach((url) => {
+            html += `<div class="ip-item">${url} <button onclick="copyToClipboard('${url}')">Copy</button></div>`;
+          });
+          ipListEl.innerHTML = html;
+          return;
+        }
+
+        const { source, clientIp, message } = data;
+
+        if (source === "AdminPanel" && message.includes("Đã khởi động")) {
+          statusEl.textContent = "Trạng thái: 🟢 Đang chạy";
+          statusEl.style.color = "#c5e1a5";
+          btnStart.disabled = true;
+          btnStop.disabled = false;
+        } else if (
+          source === "AdminPanel" &&
+          message.includes("da dung hoan toan")
+        ) {
+          statusEl.textContent = "Trạng thái: 🔴 Đã dừng";
+          statusEl.style.color = "#ef9a9a";
+          btnStart.disabled = false;
+          btnStop.disabled = true;
+        }
+
+        const p = document.createElement("div");
+        p.className = "log-line";
+        const sourceClass = "log-source-" + source.replace(/[\s\.]/g, "");
+        const ipColor = getIpColor(clientIp);
+
+        p.innerHTML = `<span class="log-client-ip" style="color: ${ipColor};" title="${clientIp}">[${clientIp}]</span>
+                         <span class="log-source ${sourceClass}">[${source}]</span>
+                         <span class="log-message">${message.replace(
+                           /</g,
+                           "&lt;"
+                         )}</span>`;
+
+        const isScrolledToBottom =
+          logPanel.scrollHeight - logPanel.clientHeight <=
+          logPanel.scrollTop + 5;
+        logPanel.appendChild(p);
+        if (isScrolledToBottom) {
+          logPanel.scrollTop = logPanel.scrollHeight;
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = "Trạng thái: ‼️ Lỗi Kết Nối Bảng Điều Khiển";
+        statusEl.style.color = "red";
+        btnStart.disabled = true;
+        btnStop.disabled = true;
+      };
+
+      btnStart.onclick = () => {
+        ws.send(JSON.stringify({ command: "START" }));
+        statusEl.textContent = "Trạng thái: 🟡 Đang khởi động...";
+        statusEl.style.color = "var(--c-system)";
+        btnStart.disabled = true;
+      };
+      btnStop.onclick = () => {
+        ws.send(JSON.stringify({ command: "STOP" }));
+        statusEl.textContent = "Trạng thái: 🟠 Đang dừng...";
+        statusEl.style.color = "orange";
+        btnStop.disabled = true;
+      };
+
+      btnCloseAdmin.onclick = () => {
+        if (confirm("Bạn có chắc muốn TẮT SERVER và ĐÓNG tab này?")) {
+          ws.send(JSON.stringify({ command: "CLOSE_ADMIN" }));
+          setTimeout(() => window.close(), 500);
+        }
+      };
+    </script>
+  </body>
+</html>

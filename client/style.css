@@ -1,0 +1,418 @@
+/* --- BIEN MAU TOAN CUC (CSS VARIABLES) --- */
+:root {
+  --primary: #007bff; /* Mau chu dao */
+  --bg: #f0f2f5; /* Mau nen trang */
+  --text: #333; /* Mau chu chinh */
+  --danger: #dc3545; /* Mau nut xoa/nguy hiem */
+  --success: #28a745; /* Mau thanh cong */
+}
+
+/* --- STYLE MAC DINH --- */
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif; /* Font he thong */
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 10px;
+}
+
+/* --- CAU TRUC CHINH --- */
+.container {
+  max-width: 900px; /* Gioi han chieu rong */
+  margin: 0 auto; /* Can giua man hinh */
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Bong mo */
+  overflow: hidden; /* An cac noi dung bi tran */
+}
+header {
+  background: #222;
+  color: #fff;
+  padding: 15px 20px;
+  text-align: center;
+}
+h1,
+h3 {
+  margin: 0;
+}
+
+/* --- THANH TABS --- */
+.tabs-scroll {
+  overflow-x: auto; /* Cho phep cuon ngang neu thieu cho */
+  background: #eee;
+}
+.tabs {
+  display: flex;
+  min-width: max-content;
+  /* --- MOI: Them position: relative de giu thanh slider --- */
+  position: relative;
+}
+.tab-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+  transition: all 0.1s ease;
+  /* --- XOA: Khong can border-bottom nua --- */
+  /* border-bottom: 3px solid transparent; */
+}
+.tab-btn:not(.active):hover {
+  background: #e0e2e5;
+  color: var(--text);
+}
+.tab-btn.active {
+  color: var(--primary);
+  background: #fff;
+  /* --- XOA: Khong can border-bottom nua --- */
+  /* border-bottom-color: var(--primary); */
+}
+
+/* --- MOI: Day la thanh truot (slider) --- */
+#tab-slider {
+  position: absolute;
+  bottom: 0;
+  height: 3px; /* Day la "border" moi cua chung ta */
+  background: var(--primary);
+  /* Hieu ung truot */
+  transition: left 0.1s ease-out, width 0.1s ease-out;
+}
+/* Style cho noi dung tab */
+.tab-content {
+  display: none; /* Mac dinh an di */
+  padding: 20px;
+  animation: fadeIn 0.3s;
+}
+.tab-content.active {
+  display: block; /* Hien thi tab dang duoc chon */
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- CAC THE "CARD" VA NUT BAM (CONTROLS) --- */
+.card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.control-row {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+  align-items: center;
+}
+/* Style cho cac o input va select */
+input[type="text"],
+input[type="number"],
+.search-box,
+select.input-field {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+}
+.search-box {
+  width: 100%;
+  margin-bottom: 10px;
+}
+/* Style chung cho cac nut */
+button {
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  /* --- MOI: Them transition cho tat ca cac nut --- */
+  transition: all 0.3s ease;
+}
+
+/* --- MOI: Hieu ung khi re chuot vao nut (lam toi mau) --- */
+button:hover {
+  filter: brightness(0.85); /* Toi mau lai 15% */
+  opacity: 1; /* Dam bao opacity khong bi thay doi */
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none; /* --- MOI: Khong toi mau khi nut bi tat --- */
+}
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+.btn-refresh {
+  background: #e9ecef;
+  color: #333;
+}
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+/* O thong bao trang thai (vi du: "Dang tai...") */
+.status {
+  height: 20px;
+  font-size: 0.9em;
+  color: var(--primary);
+  margin-top: 5px;
+}
+
+/* --- BANG (TABLES) VA DANH SACH (LISTS) --- */
+.table-wrapper {
+  max-height: 450px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  position: sticky; /* Dinh tieu de bang khi cuon */
+  top: 0;
+  background: #f8f9fa;
+  z-index: 1;
+  text-align: left;
+}
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+tr:hover {
+  background: #f8f9fa;
+}
+.app-title {
+  font-size: 0.85em;
+  color: #666;
+  display: block;
+  margin-top: 4px;
+}
+/* Style cho "Mo Gan Day" */
+.recent-list {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+.tag {
+  display: inline-block;
+  background: #e9ecef;
+  padding: 4px 10px;
+  border-radius: 15px;
+  margin: 5px 5px 0 0;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+.tag:hover {
+  background: #dee2e6;
+}
+
+/* --- STYLE CHO CAC TAB DAC BIET (VIDEO, MEDIA, LOGS) --- */
+.vid-duration-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 250px;
+}
+.vid-duration-wrapper label {
+  white-space: nowrap;
+}
+
+/* Khung hien thi anh chup man hinh */
+.screen-box {
+  background: #222;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 15px;
+}
+#screenImg {
+  max-width: 100%;
+  max-height: 500px;
+  display: block;
+}
+/* Luoi hien thi thu vien anh/video */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.gallery-item {
+  position: relative;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.gallery-item:hover {
+  border-color: var(--primary);
+}
+.gallery-item img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.gallery-item video {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  background: #000;
+}
+
+/* O log cua keylogger */
+#logArea {
+  width: 100%;
+  height: 300px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  resize: vertical;
+}
+/* Style cho tab "He Thong" */
+.warning-zone {
+  border-left: 5px solid #ffc107;
+  background: #fffbf2;
+}
+.big-btn {
+  padding: 15px 30px;
+  font-size: 1.2em;
+}
+/* Style cho checkbox Keylog (cho de bam hon) */
+.keylog-toggle-label {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.keylog-toggle-cb {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+/* --- KHUNG NHAT KY THAO TAC (NOI O GOC) --- */
+.action-log-container {
+  position: fixed; /* Luon noi o 1 vi tri */
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Luon nam tren cung */
+  overflow: hidden;
+  font-size: 13px;
+  border: 1px solid #ddd;
+}
+.action-log-header {
+  background: #333;
+  color: #fff;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+/* --- MOI: Hieu ung dong mo cho Log --- */
+.action-log-list {
+  /* Them transition cho max-height va padding */
+  transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+  overflow: hidden; /* Bat buoc phai co cho max-height hoat dong */
+  max-height: 200px; /* Chieu cao toi da khi mo */
+  padding: 5px 0; /* Padding khi mo */
+}
+/* --- MOI: Class .minimized se duoc JS them vao/xoa di --- */
+.action-log-list.minimized {
+  max-height: 0; /* Chieu cao bang 0 khi dong */
+  padding-top: 0;
+  padding-bottom: 0;
+}
+/* --- (KET THUC THAY DOI LOG) --- */
+
+.log-item {
+  padding: 6px 12px;
+  border-bottom: 1px solid #eee;
+  word-break: break-word;
+}
+/* Mau cho log thanh cong/that bai */
+.log-item.success {
+  border-left: 4px solid var(--success);
+  color: #155724;
+  background-color: #d4edda;
+}
+.log-item.error {
+  border-left: 4px solid var(--danger);
+  color: #721c24;
+  background-color: #f8d7da;
+}
+.log-time {
+  font-size: 0.85em;
+  color: #666;
+  margin-right: 5px;
+}
+
+/* --- THONG TIN PROJECT (O CUOI TRANG) --- */
+.project-info-box {
+  font-size: 13px;
+  color: #444; /* Mau chu nhe hon 1 chut */
+  line-height: 1.5;
+  max-width: 900px; /* Giong .container */
+  margin: 20px auto; /* Nam ben duoi .container */
+  padding: 0 10px; /* Can le voi padding cua body */
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-align: center; /* Can giua */
+}
+.client-info {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  font-size: 11px;
+  color: #aaa;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+header {
+  position: relative; /* Can thiet de .client-info dinh vi */
+}

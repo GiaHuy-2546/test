@@ -1,0 +1,11 @@
+{
+  "name": "project-gateway",
+  "version": "1.0.0",
+  "description": "WebSocket Gateway for C++ Server",
+  "main": "gateway.js",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
+  }
+}
