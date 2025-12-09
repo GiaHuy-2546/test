@@ -1,6 +1,6 @@
 /**
  * CLIENT CORE (STANDALONE VERSION)
- * Dong bo logic voi Web Client (Dark Mode, Fix Stream, New Cam)
+ * Full Sync with Web Client V2 (Dark Mode, Fixed Stream, Client Recording)
  */
 
 // 1. STORE & STATE
@@ -35,15 +35,16 @@ const UI = {
 
   // --- THEME ---
   toggleTheme: () => {
-    document.body.classList.toggle("light-mode");
+    document.body.classList.toggle("dark-mode");
     localStorage.setItem(
       "theme",
-      document.body.classList.contains("light-mode") ? "light" : "dark"
+      document.body.classList.contains("dark-mode") ? "dark" : "light"
     );
   },
   initTheme: () => {
-    if (localStorage.getItem("theme") === "light")
-      document.body.classList.add("light-mode");
+    // Default la Light, neu set Dark thi add class
+    if (localStorage.getItem("theme") === "dark")
+      document.body.classList.add("dark-mode");
   },
 
   // --- TABS & SLIDER ---
@@ -200,8 +201,6 @@ function handleCommand(cmd, payload) {
     case "GET_DEVICES":
       Cam.renderDevices(payload);
       break;
-    case "RECORD_VIDEO":
-      /* Server side rec removed */ break;
     case "GET_SCREENSHOT":
       Screen.handleShot(payload);
       break;
@@ -326,8 +325,8 @@ const Screen = {
 
     // UI: Hien anh chup, an stream
     imgEl.src = src;
-    imgEl.classList.add("show-view");
-    streamEl.classList.remove("show-view");
+    imgEl.style.display = "block"; // Force display
+    streamEl.style.display = "none";
 
     if (App.isSavingScreenshot && App.db) {
       fetch(src)
@@ -380,8 +379,8 @@ const Screen = {
     if (btn === null) {
       App.isScreenStreamOn = false;
       streamView.src = "";
-      streamView.classList.remove("show-view");
-      imgView.classList.add("show-view"); // Hien lai khung anh (hoac den)
+      streamView.style.display = "none";
+      imgView.style.display = "block";
 
       const b = document.getElementById("btnToggleScreenStream");
       if (b) {
@@ -392,11 +391,10 @@ const Screen = {
     }
     App.isScreenStreamOn = !App.isScreenStreamOn;
     if (App.isScreenStreamOn) {
-      if (App.isCamStreamOn && window.toggleCamStream)
-        Cam.toggleCamStream(null); // Tat Cam
+      if (App.isCamStreamOn) Cam.toggleCamStream(null); // Tat Cam
 
-      imgView.classList.remove("show-view");
-      streamView.classList.add("show-view");
+      imgView.style.display = "none";
+      streamView.style.display = "block";
       streamView.src = ""; // Clear buffer
 
       btn.textContent = "⏹️ Tắt Stream";
@@ -447,7 +445,7 @@ const Cam = {
 
     const btn = document.getElementById("btnVid");
     const img = document.getElementById("camStreamView");
-    const cvs = document.getElementById("recCanvas");
+    const cvs = document.getElementById("camRecorderCanvas");
     const btnStream = document.getElementById("btnToggleCamStream");
 
     if (!Cam.isRec) {
@@ -541,7 +539,7 @@ const Cam = {
     if (btn === null) {
       App.isCamStreamOn = false;
       view.src = "";
-      view.removeAttribute("src"); // Hien man hinh den
+      view.style.display = "none"; // An
 
       const b = document.getElementById("btnToggleCamStream");
       if (b) {
@@ -558,6 +556,7 @@ const Cam = {
 
       const c = document.getElementById("camName").value;
       view.src = "";
+      view.style.display = "block"; // Hien
       btn.textContent = "⏹️ Tắt Stream";
       btn.classList.add("btn-danger");
       Socket.send("START_STREAM_CAM", { cam: c, audio: "" });
@@ -619,12 +618,34 @@ window.startConnection = () => {
   document.getElementById("client-info").innerText = "CONNECTING...";
 };
 
-// DOM helper for Rec Mode
+// Global Helpers Map
 window.toggleRecMode = function () {
   const mode = document.querySelector('input[name="recMode"]:checked').value;
   document.getElementById("timerInputRow").style.display =
     mode === "timer" ? "flex" : "none";
 };
+window.toggleTheme = UI.toggleTheme;
+window.toggleActionLog = UI.toggleActionLog;
+window.logActionUI = UI.logAction;
+window.showTab = UI.showTab;
+window.handleTabHover = UI.handleTabHover;
+window.handleTabLeave = UI.handleTabLeave;
+window.filterTable = UI.filterTable;
+window.loadApps = Apps.loadApps;
+window.startCmd = Apps.startCmd;
+window.loadProcs = Procs.loadProcs;
+window.kill = Procs.kill;
+window.updateScreen = Screen.updateScreen;
+window.toggleAutoShot = Screen.toggleAutoShot;
+window.toggleScreenStream = Screen.toggleScreenStream;
+window.clearGallery = Screen.clearGallery;
+window.toggleKeylog = Keylog.toggleKeylog;
+window.clearLogs = Keylog.clearLogs;
+window.loadDevices = Cam.loadDevices;
+window.toggleCamStream = Cam.toggleCamStream;
+window.recordVideo = Cam.recordVideo;
+window.clearVideos = Cam.clearVideos;
+window.sendPower = Sys.sendPower;
 
 // INIT
 UI.initTheme();

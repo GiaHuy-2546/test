@@ -1,133 +1,177 @@
-/* client/style.css - Standalone Client Theme */
+/* client/style.css - Full Sync with Web Client */
+
+/* --- 1. COPY NGUYÊN BẢN TỪ WEB CLIENT (uploaded:style.css) --- */
+/* --- BIEN MAU TOAN CUC (CSS VARIABLES) --- */
 :root {
-  /* --- DARK THEME (DEFAULT) --- */
-  --bg-color: #0d1117;
-  --header-bg: #161b22;
-  --card-bg: #21262d;
-  --text-main: #c9d1d9;
-  --text-muted: #8b949e;
-  --border-color: #30363d;
+  /* --- LIGHT MODE (MAC DINH) --- */
+  --primary: #007bff;
+  --bg: #f0f2f5;
+  --container-bg: #fff;
+  --text: #333;
+  --text-muted: #666;
+  --danger: #dc3545;
+  --success: #28a745;
 
-  --accent-color: #58a6ff;
-  --accent-hover: #1f6feb;
-  --danger-color: #f85149;
-  --success-color: #2ea043;
-  --warning-bg: rgba(187, 128, 9, 0.15);
+  --header-bg: #222;
+  --header-text: #fff;
 
-  --font-tech: "Segoe UI", "Roboto", "Helvetica", sans-serif;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --input-bg: #0d1117;
+  --border: #eee;
+  --card-bg: #fff;
+  --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+  --tab-bg: #eee;
+  --tab-hover: #e0e0e0;
+  --tab-active-bg: #fff;
+
+  --input-bg: #fff;
+  --input-border: #ddd;
+
+  --table-head-bg: #f8f9fa;
+  --table-hover: #f8f9fa;
+
+  --recent-bg: #f9f9f9;
+  --tag-bg: #e9ecef;
+
+  --log-bg: #f8f9fa;
+  --log-border: #ddd;
 }
 
-/* --- LIGHT THEME OVERRIDE --- */
-body.light-mode {
-  --bg-color: #f6f8fa;
-  --header-bg: #ffffff;
-  --card-bg: #ffffff;
-  --text-main: #24292f;
-  --text-muted: #57606a;
-  --border-color: #d0d7de;
+/* --- DARK MODE (TECHNO THEME) --- */
+body.dark-mode {
+  --primary: #00e5ff; /* Cyan Neon */
+  --bg: #050505; /* Den sau */
+  --container-bg: #111;
+  --text: #e0e0e0;
+  --text-muted: #aaa;
+  --danger: #ff2a6d; /* Hong Neon */
+  --success: #05ffa1; /* Xanh la Neon */
 
-  --accent-color: #0969da;
-  --accent-hover: #218bff;
-  --danger-color: #cf222e;
-  --success-color: #1a7f37;
-  --warning-bg: #fff8c5;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --input-bg: #ffffff;
+  --header-bg: #000;
+  --header-text: #00e5ff;
+
+  --border: #333;
+  --card-bg: #161616;
+  --card-shadow: 0 0 10px rgba(0, 229, 255, 0.1); /* Glow nhe */
+
+  --tab-bg: #0a0a0a;
+  --tab-hover: #222;
+  --tab-active-bg: #161616;
+
+  --input-bg: #222;
+  --input-border: #444;
+
+  --table-head-bg: #1a1a1a;
+  --table-hover: #222;
+
+  --recent-bg: #1a1a1a;
+  --tag-bg: #333;
+
+  --log-bg: #000;
+  --log-border: #333;
 }
 
+/* --- STYLE MAC DINH --- */
 * {
   box-sizing: border-box;
 }
-
 body {
-  background-color: var(--bg-color);
-  color: var(--text-main);
-  font-family: var(--font-tech);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
   margin: 0;
   padding: 10px;
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* --- LAYOUT --- */
+/* --- CAU TRUC CHINH --- */
 .container {
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  background: var(--container-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
-
 header {
   background: var(--header-bg);
+  color: var(--header-text);
   padding: 15px 20px;
-  border-bottom: 1px solid var(--border-color);
+  text-align: center;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 header h1 {
   margin: 0;
-  font-size: 1.2rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  flex-grow: 1;
+  text-align: center;
+  display: inline-block; /* Fix tu file html */
 }
 
-.theme-toggle {
-  background: none;
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
+/* Nut chuyen doi giao dien */
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--header-text);
+  color: var(--header-text);
   padding: 5px 10px;
-  border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
+  border-radius: 4px;
+}
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* --- TABS --- */
+/* --- THANH TABS --- */
 .tabs-scroll {
-  background: var(--bg-color);
-  border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
+  background: var(--tab-bg);
 }
 .tabs {
   display: flex;
+  min-width: max-content;
   position: relative;
 }
 .tab-btn {
   flex: 1;
-  flex-basis: 0;
-  padding: 12px 5px;
-  background: transparent;
+  padding: 12px 20px;
   border: none;
-  border-right: 1px solid var(--border-color);
-  color: var(--text-muted);
-  font-weight: 600;
+  background: none;
   cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted);
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all 0.1s ease;
 }
-.tab-btn:hover {
-  background: rgba(127, 127, 127, 0.1);
-  color: var(--accent-color);
+.tab-btn:not(.active):hover {
+  background: var(--tab-hover);
+  color: var(--text);
 }
 .tab-btn.active {
-  color: var(--accent-color);
-  background: var(--card-bg);
-  border-bottom: 2px solid var(--accent-color);
+  color: var(--primary);
+  background: var(--tab-active-bg);
+}
+
+#tab-slider {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: var(--primary);
+  transition: left 0.1s ease-out, width 0.1s ease-out;
 }
 
 /* --- CONTENT --- */
 .tab-content {
   display: none;
   padding: 20px;
+  animation: fadeIn 0.3s;
 }
 .tab-content.active {
   display: block;
-  animation: fadein 0.2s;
 }
-@keyframes fadein {
+@keyframes fadeIn {
   from {
     opacity: 0;
   }
@@ -136,130 +180,94 @@ header h1 {
   }
 }
 
+/* --- CARDS & CONTROLS --- */
 .card {
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
-  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
-.card h3 {
-  margin-top: 0;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  color: var(--accent-color);
-  font-size: 1rem;
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 }
-
-/* --- CONTROLS --- */
 .control-row {
   display: flex;
   gap: 10px;
+  margin: 10px 0;
   align-items: center;
+}
+
+input[type="text"],
+input[type="number"],
+.search-box,
+select.input-field {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: var(--input-bg);
+  color: var(--text);
+}
+.search-box {
+  width: 100%;
   margin-bottom: 10px;
 }
-input,
-select {
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 8px;
-  border-radius: 4px;
-  width: 100%;
-}
+
 button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  font-weight: bold;
   cursor: pointer;
-  white-space: nowrap;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  transition: all 0.3s ease;
 }
+button:hover {
+  filter: brightness(0.85);
+  opacity: 1;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
+}
+
 .btn-primary {
-  background: var(--accent-color);
+  background: var(--primary);
   color: #fff;
 }
-.btn-primary:hover {
-  background: var(--accent-hover);
+body.dark-mode .btn-primary {
+  color: #000;
+}
+
+.btn-refresh {
+  background: var(--tag-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
 }
 .btn-danger {
-  background: var(--danger-color);
-  color: #fff;
-}
-.btn-refresh {
-  background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-main);
-}
-.btn-refresh:hover {
-  border-color: var(--text-muted);
+  background: var(--danger);
+  color: white;
 }
 
-/* --- SCREEN / CAM BOX --- */
-.screen-box {
-  background: #000;
-  height: 480px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
-}
-#camStreamView,
-#screenStreamView,
-#screenImg {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: none;
-}
-.show-view {
-  display: block !important;
+.status {
+  height: 20px;
+  font-size: 0.9em;
+  color: var(--primary);
+  margin-top: 5px;
 }
 
-/* --- GALLERY --- */
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
-  max-height: 250px;
-  overflow-y: auto;
-  padding: 5px;
-}
-.gallery-item {
-  border: 2px solid var(--border-color);
-  border-radius: 4px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-.gallery-item:hover {
-  border-color: var(--accent-color);
-  transform: scale(1.05);
-}
-.gallery-item img,
-.gallery-item video {
-  width: 100%;
-  height: 80px;
-  object-fit: cover;
-  display: block;
-}
-
-/* --- KEYLOG & TABLE --- */
-#logArea {
-  height: 400px;
-  background: var(--input-bg);
-  color: var(--success-color);
-  border: 1px solid var(--border-color);
-  font-family: monospace;
-  resize: vertical;
-}
+/* --- TABLES & LISTS --- */
 .table-wrapper {
-  max-height: 400px;
+  max-height: 450px;
   overflow-y: auto;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 table {
   width: 100%;
@@ -268,86 +276,268 @@ table {
 th {
   position: sticky;
   top: 0;
-  background: var(--header-bg);
-  padding: 10px;
+  background: var(--table-head-bg);
+  color: var(--text);
+  z-index: 1;
   text-align: left;
 }
+th,
 td {
-  padding: 8px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+tr:hover {
+  background: var(--table-hover);
+}
+.app-title {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
 }
 
-/* --- LOG --- */
+.recent-list {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--recent-bg);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 15px;
+  margin: 5px 5px 0 0;
+  font-size: 0.9em;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.tag:hover {
+  border-color: var(--primary);
+}
+
+/* --- SPECIAL TABS --- */
+.vid-duration-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 250px;
+}
+.vid-duration-wrapper label {
+  white-space: nowrap;
+}
+
+.screen-box {
+  background: #000;
+  height: 480px; /* Fix cao 480px nhu file html yeu cau */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 15px;
+  border: 1px solid var(--border);
+  position: relative;
+}
+#camStreamView,
+#screenStreamView,
+#screenImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block; /* Mac dinh block, js se an/hien */
+}
+/* Them class ho tro an hien nhu logic js moi */
+.show-view {
+  display: block !important;
+}
+.hide-view {
+  display: none !important;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.gallery-item {
+  position: relative;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.gallery-item:hover {
+  border-color: var(--primary);
+}
+.gallery-item img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.gallery-item video {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  background: #000;
+}
+
+#logArea {
+  width: 100%;
+  height: 300px;
+  padding: 10px;
+  border: 1px solid var(--log-border);
+  border-radius: 6px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  background: var(--log-bg);
+  color: var(--text);
+  resize: vertical;
+}
+body.dark-mode #logArea {
+  color: var(--success);
+}
+
+.warning-zone {
+  border-left: 5px solid var(--danger);
+  background: rgba(220, 53, 69, 0.1);
+}
+.big-btn {
+  padding: 15px 30px;
+  font-size: 1.2em;
+}
+
+.keylog-toggle-label {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.keylog-toggle-cb {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+/* --- ACTION LOG --- */
 .action-log-container {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 320px;
+  width: 300px;
   background: var(--card-bg);
-  border: 1px solid var(--accent-color);
-  box-shadow: var(--shadow);
-  border-radius: 6px;
-  z-index: 9999;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  overflow: hidden;
+  font-size: 13px;
+  border: 1px solid var(--border);
 }
 .action-log-header {
-  background: var(--accent-color);
+  background: #333;
   color: #fff;
   padding: 8px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  font-size: 0.9em;
 }
+body.dark-mode .action-log-header {
+  background: var(--primary);
+  color: #000;
+}
+
 .action-log-list {
+  transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+  overflow: hidden;
   max-height: 200px;
-  overflow-y: auto;
   padding: 5px 0;
-  transition: max-height 0.3s;
+  background: var(--card-bg);
 }
 .action-log-list.minimized {
   max-height: 0;
-  padding: 0;
-  border-top: none;
+  padding-top: 0;
+  padding-bottom: 0;
 }
+
 .log-item {
-  padding: 5px 10px;
-  font-size: 0.85em;
-  border-bottom: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  word-break: break-word;
+  color: var(--text);
 }
 .log-item.success {
-  border-left: 3px solid var(--success-color);
+  border-left: 4px solid var(--success);
+  background-color: rgba(40, 167, 69, 0.1);
 }
 .log-item.error {
-  border-left: 3px solid var(--danger-color);
+  border-left: 4px solid var(--danger);
+  background-color: rgba(220, 53, 69, 0.1);
+}
+.log-time {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-right: 5px;
 }
 
-.warning-zone {
-  border-color: var(--danger-color);
-  background: var(--warning-bg);
+/* --- INFO BOX --- */
+.project-info-box {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 0 10px;
+  text-align: center;
+}
+.client-info {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  font-size: 11px;
+  color: #aaa;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+body.dark-mode .client-info {
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+header {
+  position: relative;
 }
 
-/* === LOGIN SCREEN (RIÊNG CHO CLIENT) === */
+/* --- 2. PHẦN BỔ SUNG CHO MÀN HÌNH LOGIN (CLIENT RỜI) --- */
 #login-screen {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--bg-color); /* Dung bien mau */
+  background: var(--bg); /* Dung bien mau de dong bo theme */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  color: var(--text-main);
+  color: var(--text);
+  transition: opacity 0.5s;
 }
 .login-box {
   background: var(--card-bg);
   padding: 30px;
   border-radius: 10px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--accent-color);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--primary);
   width: 90%;
   max-width: 400px;
 }
@@ -356,23 +546,26 @@ input.ip-input {
   padding: 12px;
   margin: 10px 0;
   background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
+  border: 1px solid var(--input-border);
+  color: var(--text);
   font-size: 16px;
 }
 .btn-connect {
   width: 100%;
   padding: 12px;
-  background: var(--accent-color);
-  color: white;
+  background: var(--primary);
+  color: #fff;
   border: none;
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
 }
+body.dark-mode .btn-connect {
+  color: #000;
+}
 .history-list {
   margin-top: 15px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border);
   padding-top: 10px;
   max-height: 150px;
   overflow-y: auto;
@@ -380,17 +573,18 @@ input.ip-input {
 }
 .history-item {
   padding: 8px;
-  background: var(--bg-color);
+  background: var(--bg);
   margin-bottom: 5px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
 }
 .history-item:hover {
-  border-color: var(--accent-color);
+  border-color: var(--primary);
 }
-/* An app chinh */
+
+/* An app chinh ban dau */
 #main-app {
   display: none;
 }
