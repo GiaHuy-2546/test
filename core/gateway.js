@@ -1,17 +1,17 @@
-// gateway.js (FIX 3: Doc va Gui Device ID)
 import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
 import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
-import { URL } from "url"; // Them URL de parse query string
+import { URL } from "url";
 
+//Hàm gọi API 8001 của Admin Panel để kiểm tra quyền của client
 function httpGetJson(url) {
   return new Promise((resolve, reject) => {
     http
       .get(url, (res) => {
-        // Kiem tra loi (vi du: admin panel 8001 chua chay)
+        // Kiểm tra lỗi (Ví dụ: Admin panel 8001 chưa chạy)
         if (res.statusCode < 200 || res.statusCode >= 300) {
           return reject(
             new Error(`Loi API 8001, StatusCode: ${res.statusCode}`)
@@ -28,12 +28,12 @@ function httpGetJson(url) {
             const parsedData = JSON.parse(rawData);
             resolve(parsedData);
           } catch (e) {
-            reject(e); // Loi parse JSON
+            reject(e); // Lỗi parse JSON
           }
         });
       })
       .on("error", (e) => {
-        reject(e); // Loi ket noi (vi du: 8001 bi tu choi)
+        reject(e); // Lỗi kết nối (ví dụ: 8001 bị từ chối)
       });
   });
 }
@@ -52,7 +52,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*"); // Cho phep moi IP truy cap
+  res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
@@ -60,16 +60,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Chuyển các file UI cần thiết trong thư mục public
 const server = http.createServer(app);
 app.use(express.static(path.join(__dirname, "../public")));
 console.log(
   `[SYSTEM] Dang phuc vu file tu: ${path.join(__dirname, "../public")}`
 );
 
+// Tạo kết nối TCP bền vững đến cổng 9000 của server
 const pendingRequests = new Map();
 let cmdIdCounter = 0;
 let cmdTcp = null;
-
+// Dữ liệu phản hồi có dạng CorrelationID|JSON...
 function connectCmdTcp() {
   console.log(`[SYSTEM] [CMD_TCP] Dang ket noi Cong Lenh (9000)...`);
   cmdTcp = net.createConnection(CMD_TCP_PORT, TCP_HOST, () => {
@@ -105,10 +107,11 @@ function connectCmdTcp() {
   });
 }
 
+// Hàm xử lý dữ liệu khi server phản hồi
 function handleTcpResponse(ws, line) {
   let jsonString = line;
 
-  // 1. Neu la goi tin Base64 (phien ban moi), giai ma truoc
+  // Nếu là gói tin Base64, giải mã trước
   if (line.startsWith("B64:")) {
     try {
       const b64 = line.substring(4); // Bo chu "B64:"
@@ -119,7 +122,7 @@ function handleTcpResponse(ws, line) {
     }
   }
 
-  // 2. Xu ly JSON nhu binh thuong
+  // Xử lý JSON
   if (jsonString.startsWith("JSON ")) {
     const jsonPayload = jsonString.substring(5);
     try {
@@ -147,7 +150,6 @@ function handleTcpResponse(ws, line) {
       );
     } catch (e) {
       console.error(`[SYSTEM] [TCP->WS] Loi parse JSON phan hoi: ${e.message}`);
-      // Log mot phan payload de debug neu can
       console.error(`[DEBUG] Bad Payload: ${jsonPayload.substring(0, 50)}...`);
     }
   }
@@ -163,10 +165,9 @@ wss.on("connection", (ws, req) => {
   const clientPort = req.socket.remotePort;
   const clientInfo = `${clientIP}:${clientPort}`; // IP:PORT (Socket)
 
-  // === FIX 3: Doc Device ID tu URL ===
+  // Đọc ID Device từ URL
   const reqUrl = new URL(req.url, `http://${req.headers.host}`);
   const deviceId = reqUrl.searchParams.get("id") || "ID_UNKNOWN";
-  // === KET THUC FIX ===
 
   console.log(
     `[${clientInfo}] [AUTH] Client moi (ID: ${deviceId}), dang kiem tra quyen...`
@@ -186,6 +187,7 @@ wss.on("connection", (ws, req) => {
     }
   }
 
+  // Hàm xác thực gọi API 8001 để xem Admin đã duyệt chưa.
   async function checkAuth() {
     if (ws.readyState !== WebSocket.OPEN) {
       return;
@@ -196,8 +198,6 @@ wss.on("connection", (ws, req) => {
 
     try {
       const url = `${IPC_URL}/check-client?ip=${clientIP}&id=${deviceId}`;
-
-      // Goi helper httpGetJson moi thay vi fetch
       const data = await httpGetJson(url);
 
       authStatus = data.status;
@@ -209,13 +209,13 @@ wss.on("connection", (ws, req) => {
       authStatus = "rejected";
     }
 
+    // Nếu được duyệt thì gửi thông tin báo cho client
     if (authStatus === "approved") {
       if (!isApproved) {
         isApproved = true;
         console.log(
           `[${clientInfo}] [AUTH] DA DUYET (ID: ${deviceId}). Dang ket noi...`
         );
-        // === FIX 3: Gui them clientInfo va deviceId ===
         ws.send(
           JSON.stringify({
             type: "auth",
@@ -266,7 +266,6 @@ wss.on("connection", (ws, req) => {
         authInterval = setTimeout(checkAuth, recheckMs);
       }
     } else {
-      // status === "rejected"
       console.log(`[${clientInfo}] [AUTH] TU CHOI. Ngat ket noi.`);
       ws.send(
         JSON.stringify({
@@ -290,11 +289,13 @@ wss.on("connection", (ws, req) => {
     }
     const msg = JSON.parse(data.toString());
     let tcpCmd = msg.command;
+    // Xử lý khi dừng stream
     if (msg.command === "STOP_STREAM") {
       console.log(`[${clientInfo}] [WS] Nhan lenh STOP_STREAM.`);
       stopAllStreams();
       return;
     }
+    // Xử lý khi nhận lệnh stream: Tạo một kết nối TCP MỚI tới cổng 9001 của C++.
     if (
       msg.command === "START_STREAM_SCREEN" ||
       msg.command === "START_STREAM_CAM"
@@ -357,6 +358,7 @@ wss.on("connection", (ws, req) => {
         }
       });
     } else {
+      // Kiểm lỗi
       if (!cmdTcp || cmdTcp.destroyed) {
         console.log(
           `[${clientInfo}] [WS->TCP] Loi: Dinh gui lenh nhung Cong Lenh 9000 offline.`
@@ -371,6 +373,7 @@ wss.on("connection", (ws, req) => {
       }
       const correlationId = `${clientInfo}_${++cmdIdCounter}`;
       pendingRequests.set(correlationId, ws);
+      // Xử lý khi cần quay video
       if (msg.payload) {
         if (msg.command === "RECORD_VIDEO") {
           tcpCmd += ` ${msg.payload.duration} "${msg.payload.cam}" "${msg.payload.audio}"`;
@@ -378,6 +381,7 @@ wss.on("connection", (ws, req) => {
           tcpCmd += ` ${msg.payload}`;
         }
       }
+      // Xử lý lệnh bình thường qua port 9000
       console.log(
         `[${clientInfo}] [WS->TCP] Gui Lenh 9000: ${correlationId}|${tcpCmd}`
       );
@@ -385,12 +389,12 @@ wss.on("connection", (ws, req) => {
     }
   });
 
+  // Xử lý khi client ngắt kết nối
   ws.on("close", () => {
     console.log(`[${clientInfo}] [WS] Client da ngat ket noi.`);
     if (authInterval) clearTimeout(authInterval);
     stopAllStreams();
     if (isApproved) {
-      // === FIX 3: Gui ca 'id' (Device ID) khi bao cao ===
       httpGetJson(
         `${IPC_URL}/report-status?ip=${clientIP}&id=${deviceId}&status=offline`
       ).catch(() => {});
@@ -398,6 +402,7 @@ wss.on("connection", (ws, req) => {
   });
 });
 
+// Thực hiện khởi tạo kết nối TCP
 server.listen(WS_PORT, () => {
   console.log(
     `[SYSTEM] HTTP/WS Gateway dang chay tren http://localhost:${WS_PORT}`

@@ -1,5 +1,4 @@
-// controllers/AppController.cpp
-#include "../utils/helpers.h" // Can jsonEscape, getProcessPath
+#include "../utils/helpers.h" // Cần jsonEscape, getProcessPath
 #include "AppController.h"
 #include <sstream>
 #include <shellapi.h> // cho ShellExecuteA
@@ -8,7 +7,7 @@
 
 using namespace std;
 
-// Struct de luu thong tin cua so ung dung
+// Struct để lưu thông tin cửa sổ ứng dụng
 struct AppController::AppInfo
 {
     HWND hwnd;
@@ -17,9 +16,7 @@ struct AppController::AppInfo
     string path;
 };
 
-/**
- * @brief Liet ke tat ca cac CUA SO ung dung dang mo (co giao dien).
- */
+// Liệt kê tất cả các cửa số ứng dụng đang mở (Tức là có giao diện)
 vector<AppController::AppInfo> AppController::listApplications()
 {
     vector<AppInfo> out;
@@ -35,9 +32,7 @@ vector<AppController::AppInfo> AppController::listApplications()
     return out;
 }
 
-/**
- * @brief Dong mot cua so ung dung bang "handle" (HWND) cua no.
- */
+// Đóng một cửa sổ ứng dụng bằng "handle" (HWND) của nó
 bool AppController::closeWindowByHwnd(HWND hwnd)
 {
     if (!IsWindow(hwnd))
@@ -46,19 +41,17 @@ bool AppController::closeWindowByHwnd(HWND hwnd)
     return true;
 }
 
-/**
- * @brief Mo mot ung dung/file bang ten lenh.
- */
+// Mở một ứng dụng/ file bằng tên lệnh
 bool AppController::startProcessFromCommand(const string &cmd)
 {
     return ((intptr_t)ShellExecuteA(NULL, "open", cmd.c_str(), NULL, NULL, SW_SHOWNORMAL) > 32);
 }
-// --- Public Handlers (Tra ve JSON string) ---
+
+// CÁC HÀM PUBLIC (3 HÀM): Dùng những hàm ở trên, sau đó trả về JSON string cho CommandRouter
 string AppController::getAppsJson()
 {
     auto apps = listApplications();
     stringstream ss;
-    // --- SUA LOI: Khong them 'command' hay 'payload' ---
     ss << "[";
     for (size_t i = 0; i < apps.size(); ++i)
     {
@@ -70,7 +63,6 @@ string AppController::getAppsJson()
     ss << "]";
     return ss.str();
 }
-
 string AppController::closeApp(const string &hwnd_str)
 {
     try
@@ -84,7 +76,6 @@ string AppController::closeApp(const string &hwnd_str)
         return "{\"ok\":false, \"error\":\"Invalid HWND\"}";
     }
 }
-
 string AppController::startApp(const string &cmd)
 {
     bool ok = !cmd.empty() && startProcessFromCommand(cmd);

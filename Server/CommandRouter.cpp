@@ -10,7 +10,7 @@ using namespace std;
 
 CommandRouter::CommandRouter() {}
 
-// === 1. HAM XU LY LENH (CONG 9000) ===
+// Hàm xử lý lệnh (Cổng 9000)
 void CommandRouter::handleCommandClient(SOCKET client)
 {
     logConsole("CMD_TCP", "Gateway da ket noi Cong Lenh.");
@@ -23,7 +23,7 @@ void CommandRouter::handleCommandClient(SOCKET client)
         {
             int rec = recv(client, buffer, sizeof(buffer) - 1, 0);
             if (rec <= 0)
-                break; // Gateway ngat ket noi
+                break; // Gateway ngắt kết nối
             buffer[rec] = 0;
             line_buffer += buffer;
             size_t pos;

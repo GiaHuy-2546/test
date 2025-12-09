@@ -63,6 +63,10 @@ string rawToJpeg(int *rawPixels, int w, int h)
     return data;
 }
 
+HWAVEIN DeviceController::hWaveIn = NULL;
+WAVEHDR DeviceController::waveHeaders[3];
+char DeviceController::audioBuffers[3][2048];
+
 // --- 1. LAY DANH SACH ---
 void DeviceController::buildDeviceListJson()
 {
@@ -110,7 +114,6 @@ string DeviceController::getDevices(bool refresh)
 // --- 2. STREAMING WORKER ---
 void DeviceController::broadcastWorker(string camName)
 {
-    // === FIX LOI STREAM TAT: Khoi tao COM cho luong nay ===
     HRESULT hr = CoInitialize(NULL);
     if (FAILED(hr))
     {
@@ -120,8 +123,11 @@ void DeviceController::broadcastWorker(string camName)
 
     logConsole("CAM", "Bat dau luong camera: " + camName);
 
+    startAudioCapture();
+
     if (setupESCAPI() == 0)
     {
+        stopAudioCapture(); // Nếu cam lỗi thì tắt luôn audio
         CoUninitialize();
         return;
     }
@@ -192,13 +198,97 @@ void DeviceController::broadcastWorker(string camName)
         }
         Sleep(30);
     }
-
+    stopAudioCapture();
     deinitCapture(devIndex);
     delete[] capture.mTargetBuf;
     logConsole("CAM", "Da dung luong camera.");
 
     // Huy COM khi het luong
     CoUninitialize();
+}
+
+void CALLBACK DeviceController::AudioCallback(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2)
+{
+    // Khi driver âm thanh báo đã ghi đầy 1 buffer (WIM_DATA)
+    if (uMsg == WIM_DATA)
+    {
+        WAVEHDR *pHeader = (WAVEHDR *)dwParam1;
+
+        // Chỉ xử lý nếu đang Stream và có dữ liệu (BytesRecorded > 0)
+        if (isStreaming && pHeader->dwBytesRecorded > 0)
+        {
+            std::lock_guard<std::mutex> lock(streamMutex);
+
+            // Gói dữ liệu âm thanh thành chuỗi
+            std::string audioData(pHeader->lpData, pHeader->dwBytesRecorded);
+
+            // Gửi cho TẤT CẢ client đang xem
+            for (auto it = viewingClients.begin(); it != viewingClients.end();)
+            {
+                // Gọi sendStreamFrame: Gateway sẽ chuyển tiếp gói này xuống Client
+                // Client sẽ dựa vào kích thước gói tin (nhỏ < 2000 bytes) để biết đây là âm thanh
+                if (!sendStreamFrame(*it, audioData))
+                {
+                    closesocket(*it);
+                    it = viewingClients.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+
+        // Nếu vẫn đang stream, nạp lại buffer này để ghi tiếp (Vòng lặp)
+        if (isStreaming)
+        {
+            waveInAddBuffer(hwi, pHeader, sizeof(WAVEHDR));
+        }
+    }
+}
+
+void DeviceController::startAudioCapture()
+{
+    WAVEFORMATEX format;
+    format.wFormatTag = WAVE_FORMAT_PCM;
+    format.nChannels = 1;          // Mono (Nhẹ)
+    format.nSamplesPerSec = 11025; // 11kHz (Chất lượng bộ đàm, rất nhẹ)
+    format.wBitsPerSample = 8;     // 8-bit (Nhẹ hơn 16-bit một nửa)
+    format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+    format.cbSize = 0;
+
+    // Mở thiết bị ghi âm mặc định (WAVE_MAPPER)
+    MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &format, (DWORD_PTR)AudioCallback, 0, CALLBACK_FUNCTION);
+    if (result != MMSYSERR_NOERROR)
+    {
+        logConsole("AUDIO", "Khong the mo Microphone. Ma loi: " + to_string(result));
+        return;
+    }
+
+    // Chuẩn bị 3 buffer để ghi luân phiên (tránh mất tiếng)
+    for (int i = 0; i < 3; i++)
+    {
+        memset(&waveHeaders[i], 0, sizeof(WAVEHDR));
+        waveHeaders[i].lpData = audioBuffers[i];
+        waveHeaders[i].dwBufferLength = 2048; // Buffer size
+        waveInPrepareHeader(hWaveIn, &waveHeaders[i], sizeof(WAVEHDR));
+        waveInAddBuffer(hWaveIn, &waveHeaders[i], sizeof(WAVEHDR));
+    }
+
+    waveInStart(hWaveIn);
+    logConsole("AUDIO", "Da bat ghi am (11kHz, 8bit).");
+}
+
+void DeviceController::stopAudioCapture()
+{
+    if (hWaveIn)
+    {
+        waveInReset(hWaveIn); // Dừng ghi ngay lập tức
+        waveInClose(hWaveIn); // Đóng thiết bị
+        hWaveIn = NULL;
+        logConsole("AUDIO", "Da tat ghi am.");
+    }
 }
 
 void DeviceController::handleStreamCam(SOCKET client, const string &clientIP, const string &cam, const string &audio)

@@ -3,6 +3,8 @@
 #define DEVICECONTROLLER_H
 
 #include <winsock2.h>
+#include <windows.h>  // Can cho HWND
+#include <mmsystem.h> // Can cho WaveIn
 #include <string>
 #include <mutex>
 #include <atomic>
@@ -26,8 +28,19 @@ private:
     static std::mutex streamMutex;
     static std::atomic<bool> isStreaming;
 
-    // Worker chay ngam
+    // Worker chạy ngầm
     void broadcastWorker(std::string camName);
+
+    static HWAVEIN hWaveIn;
+    static WAVEHDR waveHeaders[3];     // Dùng 3 bộ đệm để ghi âm liên tục
+    static char audioBuffers[3][2048]; // Mỗi buffer khoảng 2KB (~200ms âm thanh)
+
+    // Hàm khởi động/dừng ghi âm
+    void startAudioCapture();
+    void stopAudioCapture();
+
+    // Hàm callback khi Windows thu xong 1 gói âm thanh
+    static void CALLBACK AudioCallback(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2);
 };
 
 #endif // DEVICECONTROLLER_H

@@ -29,7 +29,6 @@
           placeholder="192.168.1.10"
         />
         <button onclick="startConnection()" class="btn-connect">KẾT NỐI</button>
-
         <div class="history-list" id="historyList">
           <small style="color: var(--text-muted)">Lịch sử đấu nối:</small>
           <div id="historyItems"></div>
@@ -40,13 +39,12 @@
     <div id="main-app" class="container">
       <header>
         <h1 style="display: inline-block">Điều khiển máy tính từ xa</h1>
-
         <div
           style="float: right; display: flex; align-items: center; gap: 10px"
         >
           <button
             class="theme-toggle-btn"
-            onclick="UI.toggleTheme()"
+            onclick="toggleTheme()"
             title="Chuyển chế độ Sáng/Tối"
           >
             🌗 Mode
@@ -59,46 +57,46 @@
       </header>
 
       <div class="tabs-scroll">
-        <div class="tabs" onmouseleave="UI.handleTabLeave()">
+        <div class="tabs" onmouseleave="handleTabLeave()">
           <button
             class="tab-btn active"
-            onclick="UI.showTab('apps')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('apps')"
+            onmouseenter="handleTabHover(this)"
           >
             🖥️ Ứng dụng
           </button>
           <button
             class="tab-btn"
-            onclick="UI.showTab('procs')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('procs')"
+            onmouseenter="handleTabHover(this)"
           >
             ⚙️ Tiến trình
           </button>
           <button
             class="tab-btn"
-            onclick="UI.showTab('screen')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('screen')"
+            onmouseenter="handleTabHover(this)"
           >
             📸 Màn hình
           </button>
           <button
             class="tab-btn"
-            onclick="UI.showTab('keylog')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('keylog')"
+            onmouseenter="handleTabHover(this)"
           >
             ⌨️ Bắt phím
           </button>
           <button
             class="tab-btn"
-            onclick="UI.showTab('cam')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('cam')"
+            onmouseenter="handleTabHover(this)"
           >
             📹 Camera
           </button>
           <button
             class="tab-btn"
-            onclick="UI.showTab('sys')"
-            onmouseenter="UI.handleTabHover(this)"
+            onclick="showTab('sys')"
+            onmouseenter="handleTabHover(this)"
           >
             🔌 Hệ thống
           </button>
@@ -112,7 +110,7 @@
           <div class="control-row">
             <input id="cmdApp" type="text" placeholder="Tên (vd: chrome)..." />
             <button
-              onclick="Apps.startCmd('cmdApp', 'statusApp')"
+              onclick="startCmd('cmdApp', 'statusApp')"
               class="btn-primary"
             >
               Mở ngay
@@ -127,15 +125,13 @@
         <div class="card full-height">
           <div class="card-head">
             <h3>Cửa Sổ Đang Mở</h3>
-            <button onclick="Apps.loadApps()" class="btn-refresh">
-              🔄 Tải lại
-            </button>
+            <button onclick="loadApps()" class="btn-refresh">🔄 Tải lại</button>
           </div>
           <input
             id="searchApps"
             class="search-box"
             placeholder="🔍 Lọc..."
-            oninput="UI.filterTable('appsTable', 0, this.value)"
+            oninput="filterTable('appsTable', 0, this.value)"
           />
           <div class="table-wrapper">
             <table id="appsTable">
@@ -157,7 +153,7 @@
           <div class="control-row">
             <input id="cmdProc" type="text" placeholder="Tên process..." />
             <button
-              onclick="Apps.startCmd('cmdProc', 'statusProc')"
+              onclick="startCmd('cmdProc', 'statusProc')"
               class="btn-primary"
             >
               Chạy
@@ -168,7 +164,7 @@
         <div class="card full-height">
           <div class="card-head">
             <h3>Danh Sách Process</h3>
-            <button onclick="Procs.loadProcs()" class="btn-refresh">
+            <button onclick="loadProcs()" class="btn-refresh">
               🔄 Tải lại
             </button>
           </div>
@@ -176,7 +172,7 @@
             id="searchProcs"
             class="search-box"
             placeholder="🔍 Lọc..."
-            oninput="UI.filterTable('procTable', 1, this.value)"
+            oninput="filterTable('procTable', 1, this.value)"
           />
           <div class="table-wrapper">
             <table id="procTable">
@@ -196,44 +192,41 @@
       <div id="tab-screen" class="tab-content">
         <div class="card">
           <div class="control-row">
-            <button onclick="Screen.updateScreen(true)" class="btn-primary">
+            <button onclick="updateScreen(true)" class="btn-primary">
               📸 Chụp & Lưu
             </button>
             <label
               ><input
                 type="checkbox"
                 id="autoShot"
-                onchange="Screen.toggleAutoShot(this)"
+                onchange="toggleAutoShot(this)"
               />
               Tự động (2s)</label
             >
           </div>
           <div class="screen-box">
-            <img id="screenStreamView" alt="" style="display: none" />
-            <img id="screenImg" alt="NO SIGNAL" style="display: block" />
+            <img id="screenImg" src="" alt="Chưa có ảnh" />
           </div>
         </div>
-
         <div class="card">
           <div class="card-head">
             <h3>Thư Viện Ảnh (Cache)</h3>
-            <button onclick="Screen.clearGallery()" class="btn-danger">
+            <button onclick="clearGallery()" class="btn-danger">
               Xóa tất cả
             </button>
           </div>
           <div id="gallery" class="gallery-grid"></div>
         </div>
-
         <div class="card">
           <h3>🖥️ Livestream Màn Hình (~33 FPS)</h3>
           <div class="control-row" style="justify-content: center">
             <button
               id="btnToggleScreenStream"
-              onclick="Screen.toggleScreenStream(this)"
+              onclick="toggleScreenStream(this)"
               class="btn-primary"
               style="min-width: 150px"
             >
-              ▶️ Bật Stream
+              ▶️ Bật Stream Màn Hình
             </button>
           </div>
           <div
@@ -241,6 +234,9 @@
             class="status"
             style="text-align: center"
           ></div>
+          <div class="screen-box" style="margin-top: 15px">
+            <img id="screenStreamView" alt="Stream đã tắt." />
+          </div>
         </div>
       </div>
 
@@ -252,7 +248,7 @@
               <input
                 type="checkbox"
                 id="chkKeylog"
-                onchange="Keylog.toggleKeylog(this)"
+                onchange="toggleKeylog(this)"
                 class="keylog-toggle-cb"
               />
               <strong>Bắt phím</strong>
@@ -264,41 +260,53 @@
             placeholder="Tick vào ô trên để bắt đầu ghi..."
           ></textarea>
           <div class="control-row" style="justify-content: flex-end">
-            <button onclick="Keylog.clearLogs()" class="btn-danger">
+            <button onclick="clearLogs()" class="btn-danger">
               Xóa Nhật Ký
             </button>
           </div>
         </div>
       </div>
+
       <div id="tab-cam" class="tab-content">
         <div class="card">
           <h3>Quay Video (Ghi ra file)</h3>
-
+          <div class="control-row" style="margin-bottom: 10px">
+            <label for="camName" style="width: 100px">Camera:</label>
+            <select id="camName" class="input-field"></select>
+          </div>
+          <div
+            class="control-row"
+            style="justify-content: center; margin-bottom: 15px"
+          >
+            <button class="btn-refresh" onclick="loadDevices(true)">
+              🔄 Tải Lại Danh Sách Thiết Bị
+            </button>
+          </div>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0" />
           <div
             class="control-row"
             style="justify-content: center; gap: 20px; margin-bottom: 15px"
           >
-            <label style="cursor: pointer">
-              <input
+            <label style="cursor: pointer"
+              ><input
                 type="radio"
                 name="recMode"
                 value="timer"
                 checked
                 onchange="toggleRecMode()"
               />
-              ⏱️ Hẹn giờ
-            </label>
-            <label style="cursor: pointer">
-              <input
+              ⏱️ Hẹn giờ</label
+            >
+            <label style="cursor: pointer"
+              ><input
                 type="radio"
                 name="recMode"
                 value="manual"
                 onchange="toggleRecMode()"
               />
-              🖐️ Thủ công
-            </label>
+              🖐️ Thủ công</label
+            >
           </div>
-
           <div
             class="control-row"
             id="timerInputRow"
@@ -317,11 +325,10 @@
               <label>giây</label>
             </div>
           </div>
-
           <div class="control-row" style="justify-content: center">
             <button
               id="btnVid"
-              onclick="Cam.recordVideo()"
+              onclick="recordVideo()"
               class="btn-primary"
               style="min-width: 200px"
             >
@@ -333,21 +340,22 @@
 
         <div class="card">
           <h3>📹 Livestream Camera (~20 FPS)</h3>
-          <div class="control-row">
-            <label for="camName" style="width: 100px">Camera:</label>
-            <select id="camName" class="input-field"></select>
-            <button class="btn-refresh" onclick="Cam.loadDevices(true)">
-              🔄
-            </button>
-          </div>
-          <div class="control-row" style="justify-content: center">
+          <div class="control-row" style="justify-content: center; gap: 10px">
             <button
               id="btnToggleCamStream"
-              onclick="Cam.toggleCamStream(this)"
+              onclick="toggleCamStream(this)"
               class="btn-primary"
               style="min-width: 150px"
             >
               ▶️ Bật Stream
+            </button>
+            <button
+              id="btnMute"
+              onclick="toggleMute(this)"
+              class="btn-warning"
+              style="display: none"
+            >
+              🔊 Âm thanh: ON
             </button>
           </div>
           <div
@@ -366,13 +374,12 @@
         <div class="card">
           <div class="card-head">
             <h3>Thư Viện Video (Cache)</h3>
-            <button onclick="Cam.clearVideos()" class="btn-danger">
-              Xóa hết
-            </button>
+            <button onclick="clearVideos()" class="btn-danger">Xóa hết</button>
           </div>
           <div id="vidGallery" class="gallery-grid"></div>
         </div>
       </div>
+
       <div id="tab-sys" class="tab-content">
         <div class="card warning-zone">
           <h3>⚠️ Khu Vực Nguy Hiểm</h3>
@@ -380,14 +387,11 @@
             class="control-row"
             style="justify-content: center; margin-top: 20px"
           >
-            <button
-              onclick="Sys.sendPower('shutdown')"
-              class="btn-danger big-btn"
-            >
+            <button onclick="sendPower('shutdown')" class="btn-danger big-btn">
               🛑 SHUTDOWN
             </button>
             <button
-              onclick="Sys.sendPower('restart')"
+              onclick="sendPower('restart')"
               class="btn-refresh big-btn"
               style="background: #ffc107; color: #000"
             >
@@ -399,7 +403,7 @@
     </div>
 
     <div class="project-info-box">
-      <strong>Project web + app điều khiển máy tính từ xa:</strong><br />
+      <strong>Project web + app điều khiển máy tính từ xa</strong><br />
       Võ Lê Gia Huy - 24122004 === Lê Bảo Phúc - 24122021 === Trần Xuân Bách -
       24122028
     </div>
@@ -408,7 +412,7 @@
       <div class="action-log-header">
         <span>📋 Nhật ký thao tác</span>
         <button
-          onclick="UI.toggleActionLog()"
+          onclick="toggleActionLog()"
           style="padding: 2px 6px; font-size: 12px"
         >
           _

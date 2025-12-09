@@ -16,4 +16,4 @@ b. Sử dụng client độc lập:
 
 - Vào thư mục Project
 - Nhập:
-  g++ -std=c++17 Server/server.cpp Server/CommandRouter.cpp Server/controllers/AppController.cpp Server/controllers/DeviceController.cpp Server/controllers/KeylogController.cpp Server/controllers/ProcessController.cpp Server/controllers/ScreenController.cpp Server/controllers/SystemController.cpp Server/utils/helpers.cpp Server/utils/logging.cpp -o core/server.exe -lws2_32 -lgdiplus -lgdi32 -luser32 -lshlwapi -lpsapi -liphlpapi -lole32 -static-libgcc -static-libstdc++
+  g++ -std=c++17 Server/server.cpp Server/CommandRouter.cpp Server/controllers/AppController.cpp Server/controllers/DeviceController.cpp Server/controllers/KeylogController.cpp Server/controllers/ProcessController.cpp Server/controllers/ScreenController.cpp Server/controllers/SystemController.cpp Server/utils/helpers.cpp Server/utils/logging.cpp Server/utils/escapi.cpp -o core/server.exe -lws2_32 -lgdiplus -lgdi32 -luser32 -lshlwapi -lpsapi -liphlpapi -lole32 -lwinmm -static-libgcc -static-libstdc++

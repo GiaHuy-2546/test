@@ -1,4 +1,3 @@
-// admin-panel.js (FIX 3: Dung Device ID lam Key)
 import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -16,7 +15,7 @@ const __dirname = path.dirname(__filename);
 const childProcesses = { cpp: null, gateway: null };
 const adminClients = new Set();
 
-// === FIX 3: Chuyen Key tu IP -> Device ID ===
+// Quản lý các client
 const clientLists = {
   // Map<string(DeviceID), { ip: string, firstSeen: Date }>
   pending: new Map(),
@@ -26,6 +25,7 @@ const clientLists = {
 // Set<string(DeviceID)>
 const onlineClients = new Set();
 
+//Lấy địa chỉ IP mạng LAN của máy chủ để hiển thị cho Admin biết đường dẫn truy cập.
 function getClientAccessIPs() {
   const ips = [];
   const interfaces = os.networkInterfaces();
@@ -43,6 +43,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+//Gửi dữ liệu (log, danh sách client) tới giao diện Admin UI qua WebSocket.
 function broadcastToAdmin(data) {
   const payload = JSON.stringify(data);
   adminClients.forEach((client) => {
@@ -52,6 +53,7 @@ function broadcastToAdmin(data) {
   });
 }
 
+// Hàm thực thi quá trình trên
 function broadcastClientListUpdate() {
   broadcastToAdmin({
     type: "CLIENT_LIST_UPDATE",
@@ -64,6 +66,7 @@ function broadcastClientListUpdate() {
   });
 }
 
+//Ghi log từ các tiến trình con và gửi về Admin UI để hiển thị. Nó cũng xử lý việc trích xuất IP hoặc ID từ thông điệp log để hiển thị màu sắc đẹp hơn.
 function log(source, message) {
   console.log(`[${source}]: ${message}`);
   let clientIp = "SYSTEM";
@@ -87,12 +90,14 @@ function log(source, message) {
   broadcastToAdmin({ source, clientIp, message: cleanMessage });
 }
 
+//Hàm log khi server dừng
 function checkAndLogServersStopped() {
   if (!childProcesses.cpp && !childProcesses.gateway) {
     log("AdminPanel", "Ca hai server da dung hoan toan.");
   }
 }
 
+//Khởi chạy server.exe và gateway.js, lắng nghe log từ 2 tiến trình này
 function startServers() {
   if (childProcesses.cpp || childProcesses.gateway) {
     log("AdminPanel", "Lỗi: Server đang chạy!");
@@ -149,6 +154,7 @@ function startServers() {
   log("AdminPanel", "Đã khởi động cả hai server.");
 }
 
+//Dừng server.exe và gateway.js một cách an toàn
 function stopServers() {
   let cppKilled = false;
   let gatewayKilled = false;
@@ -174,6 +180,7 @@ function stopServers() {
   }
 }
 
+//Lắng nghe và thực hiện các kết nối từ Web Admin (Admin UI)
 wss.on("connection", (ws) => {
   log("AdminPanel", "Giao diện Admin đã kết nối.");
   adminClients.add(ws);
@@ -188,7 +195,7 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message.toString());
-
+      // Nhận lệnh đóng/ mở server từ UI
       if (data.command === "START") {
         log("AdminPanel", "Nhận lệnh START từ UI...");
         startServers();
@@ -200,7 +207,7 @@ wss.on("connection", (ws) => {
         stopServers();
         setTimeout(() => process.exit(0), 1000);
       }
-      // === FIX 3: Logic duyet client (dung Device ID) ===
+      // Phần quản lý client (Ánh xạ ID thành 3 loại: Duyệt/Từ chối/ Chờ)
       else if (data.command === "APPROVE_ID" && data.id) {
         const clientData = clientLists.pending.get(data.id) ||
           clientLists.rejected.get(data.id) || {
@@ -235,6 +242,7 @@ wss.on("connection", (ws) => {
   });
 });
 
+// Lấy giao diện từ admin-ui.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "admin-ui.html"));
 });
@@ -246,8 +254,10 @@ server.listen(ADMIN_PORT, () => {
   console.log(`=================================================`);
 });
 
+// Phần giao tiếp với gateway.js qua cổng 8001
 const ipcApp = express();
 
+// Gateway thực hiện gọi API này khi có client mới
 ipcApp.get("/check-client", (req, res) => {
   const ip = req.query.ip;
   const id = req.query.id; // Nhan Device ID
@@ -255,11 +265,9 @@ ipcApp.get("/check-client", (req, res) => {
 
   const cleanIp = ip.includes("::ffff:") ? ip.split("::ffff:")[1] : ip;
 
-  // === FIX 1: Giam thoi gian polling ===
   if (cleanIp === "127.0.0.1") {
     return res.json({ status: "approved", recheck_ms: 5000 }); // 5s
   }
-  // === FIX 3: Kiem tra bang Device ID ===
   if (clientLists.approved.has(id)) {
     return res.json({ status: "approved", recheck_ms: 5000 }); // 5s
   }
@@ -280,6 +288,7 @@ ipcApp.get("/check-client", (req, res) => {
   return res.json({ status: "pending", recheck_ms: 5000 }); // 5s
 });
 
+// Gateway gọi API này khi Client báo cáo trạng thái online/ offline
 ipcApp.get("/report-status", (req, res) => {
   const ip = req.query.ip;
   const id = req.query.id; // Nhan Device ID
