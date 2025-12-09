@@ -65,7 +65,7 @@ string rawToJpeg(int *rawPixels, int w, int h)
 
 HWAVEIN DeviceController::hWaveIn = NULL;
 WAVEHDR DeviceController::waveHeaders[3];
-char DeviceController::audioBuffers[3][2048];
+char DeviceController::audioBuffers[3][1024];
 
 // --- 1. LAY DANH SACH ---
 void DeviceController::buildDeviceListJson()
@@ -251,9 +251,9 @@ void DeviceController::startAudioCapture()
 {
     WAVEFORMATEX format;
     format.wFormatTag = WAVE_FORMAT_PCM;
-    format.nChannels = 1;          // Mono (Nhẹ)
-    format.nSamplesPerSec = 11025; // 11kHz (Chất lượng bộ đàm, rất nhẹ)
-    format.wBitsPerSample = 8;     // 8-bit (Nhẹ hơn 16-bit một nửa)
+    format.nChannels = 1; // Mono (Nhẹ)
+    format.nSamplesPerSec = 16000;
+    format.wBitsPerSample = 16;
     format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
     format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
     format.cbSize = 0;
@@ -271,7 +271,7 @@ void DeviceController::startAudioCapture()
     {
         memset(&waveHeaders[i], 0, sizeof(WAVEHDR));
         waveHeaders[i].lpData = audioBuffers[i];
-        waveHeaders[i].dwBufferLength = 2048; // Buffer size
+        waveHeaders[i].dwBufferLength = 1024; // Buffer size
         waveInPrepareHeader(hWaveIn, &waveHeaders[i], sizeof(WAVEHDR));
         waveInAddBuffer(hWaveIn, &waveHeaders[i], sizeof(WAVEHDR));
     }

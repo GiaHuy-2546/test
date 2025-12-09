@@ -33,7 +33,7 @@ private:
 
     static HWAVEIN hWaveIn;
     static WAVEHDR waveHeaders[3];     // Dùng 3 bộ đệm để ghi âm liên tục
-    static char audioBuffers[3][2048]; // Mỗi buffer khoảng 2KB (~200ms âm thanh)
+    static char audioBuffers[3][1024]; // Mỗi buffer khoảng 2KB (~200ms âm thanh)
 
     // Hàm khởi động/dừng ghi âm
     void startAudioCapture();

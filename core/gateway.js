@@ -318,28 +318,31 @@ wss.on("connection", (ws, req) => {
       });
       let streamBuffer = Buffer.alloc(0);
       streamTcp.on("data", (buffer) => {
-        if (isScreenStream) {
-          streamBuffer = Buffer.concat([streamBuffer, buffer]);
-          while (streamBuffer.length >= 4) {
-            const frameSize = streamBuffer.readUInt32LE(0);
-            if (streamBuffer.length >= 4 + frameSize) {
-              const frame = streamBuffer.slice(4, 4 + frameSize);
-              if (ws.readyState === WebSocket.OPEN) ws.send(frame);
-              streamBuffer = streamBuffer.slice(4 + frameSize);
-            } else break;
-          }
-        } else {
-          streamBuffer = Buffer.concat([streamBuffer, buffer]);
-          let eoiIndex;
-          while ((eoiIndex = streamBuffer.indexOf(EOI)) !== -1) {
-            const frameEnd = eoiIndex + 2;
-            let frame = streamBuffer.slice(0, frameEnd);
-            let soiIndex = frame.indexOf(SOI);
-            if (soiIndex !== -1) {
-              frame = frame.slice(soiIndex);
-              if (ws.readyState === WebSocket.OPEN) ws.send(frame);
+        // GOM DỮ LIỆU VÀO BUFFER CHUNG
+        streamBuffer = Buffer.concat([streamBuffer, buffer]);
+
+        // VÒNG LẶP CẮT GÓI TIN (DỰA TRÊN 4 BYTE ĐẦU TIÊN LÀ KÍCH THƯỚC)
+        // Áp dụng cho cả Video Màn hình, Video Camera và Audio
+        while (streamBuffer.length >= 4) {
+          // 1. Đọc 4 byte đầu để lấy kích thước gói (Little Endian)
+          const frameSize = streamBuffer.readUInt32LE(0);
+
+          // 2. Kiểm tra xem đã nhận đủ dữ liệu cho gói này chưa
+          // (4 byte header + frameSize dữ liệu thực)
+          if (streamBuffer.length >= 4 + frameSize) {
+            // 3. Cắt lấy phần dữ liệu thực (bỏ 4 byte header đi)
+            const frame = streamBuffer.slice(4, 4 + frameSize);
+
+            // 4. Gửi xuống Client
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(frame);
             }
-            streamBuffer = streamBuffer.slice(frameEnd);
+
+            // 5. Cắt phần đã xử lý khỏi buffer để xử lý gói tiếp theo
+            streamBuffer = streamBuffer.slice(4 + frameSize);
+          } else {
+            // Chưa đủ dữ liệu, đợi gói TCP tiếp theo
+            break;
           }
         }
       });
