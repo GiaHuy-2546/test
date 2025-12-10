@@ -1,8 +1,7 @@
 // modules/tab-procs.js
 import { sendCommand } from "./socket.js";
-import { logActionUI } from "./ui.js";
+import { logActionUI, showConfirm } from "./ui.js";
 
-// Dang ky ham xu ly khi nhan duoc danh sach PROCS
 export function handleProcsData(list) {
   const tbody = document.querySelector("#procTable tbody");
   if (!tbody || !Array.isArray(list)) return;
@@ -21,9 +20,9 @@ export function loadProcs() {
 }
 
 export function kill(pid) {
-  if (confirm("Kill PID " + pid + "?")) {
-    sendCommand("KILL_PID", pid); // Gui lenh
+  showConfirm(`Kill Process PID ${pid}?`, () => {
+    sendCommand("KILL_PID", pid);
     logActionUI(`Kill PID ${pid}`, true);
-    setTimeout(loadProcs, 500); // Tai lai sau 0.5s
-  }
+    setTimeout(loadProcs, 500);
+  });
 }

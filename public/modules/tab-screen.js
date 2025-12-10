@@ -1,7 +1,7 @@
 // modules/tab-screen.js
 import { store } from "./store.js";
 import { sendCommand } from "./socket.js";
-import { logActionUI } from "./ui.js";
+import { logActionUI, showConfirm } from "./ui.js";
 
 export function handleScreenshotData(payload) {
   const imgData = "data:image/jpeg;base64," + payload;
@@ -58,7 +58,7 @@ export function loadGallery() {
   };
 }
 export function clearGallery() {
-  if (confirm("Xóa hết ảnh?")) {
+  showConfirm("Xóa hết ảnh trong thư viện?", () => {
     if (!store.db) return;
     store.db
       .transaction(["images"], "readwrite")
@@ -67,18 +67,15 @@ export function clearGallery() {
       loadGallery();
       logActionUI("Đã xóa thư viện ảnh", true);
     };
-  }
+  });
 }
 
 export function toggleScreenStream(btn) {
   const streamView = document.getElementById("screenStreamView");
   const streamStatus = document.getElementById("screenStreamStatus");
 
-  // --- TRUONG HOP TAT STREAM ---
   if (btn === null) {
     store.isScreenStreamOn = false;
-
-    // YEU CAU 2: XOA ANH CU (VE MAN HINH DEN)
     streamView.removeAttribute("src");
     streamView.src = "";
 
@@ -92,18 +89,14 @@ export function toggleScreenStream(btn) {
     return;
   }
 
-  // --- LOGIC BAT/TAT ---
   store.isScreenStreamOn = !store.isScreenStreamOn;
 
   if (store.isScreenStreamOn) {
-    // YEU CAU 3: NGAT STREAM CAM (NEU DANG CHAY)
     if (store.isCamStreamOn) {
       if (window.toggleCamStream) window.toggleCamStream(null);
     }
 
-    // Reset view
     streamView.src = "";
-
     streamView.alt = "Đang tải luồng...";
     btn.textContent = "⏹️ Tắt Stream Màn Hình";
     btn.classList.add("btn-danger");
@@ -113,7 +106,6 @@ export function toggleScreenStream(btn) {
 
     sendCommand("START_STREAM_SCREEN");
   } else {
-    // Tat thu cong
     streamView.removeAttribute("src");
     streamView.src = "";
     streamView.alt = "Stream đã tắt.";

@@ -1,16 +1,15 @@
 // modules/tab-cam.js
 import { store } from "./store.js";
 import { sendCommand } from "./socket.js";
-import { logActionUI } from "./ui.js";
+import { logActionUI, showConfirm } from "./ui.js";
+import { initAudio, getAudioStream, resumeAudio } from "./audio.js";
 
-// --- BIEN CUC BO ---
 let mediaRecorder = null;
 let recordedChunks = [];
 let drawInterval = null;
 let isRecording = false;
 let recordTimeout = null;
 
-// --- HAM CHUYEN DOI GIAO DIEN ---
 window.toggleRecMode = function () {
   const mode = document.querySelector('input[name="recMode"]:checked').value;
   const timerRow = document.getElementById("timerInputRow");
@@ -22,7 +21,6 @@ window.toggleRecMode = function () {
 };
 
 export function handleDevicesData(data) {
-  // (Logic giu nguyen)
   const camSelect = document.getElementById("camName");
   const audioSelect = document.getElementById("audioName");
 
@@ -36,7 +34,8 @@ export function handleDevicesData(data) {
 
   const currentCam = camSelect.value;
   camSelect.innerHTML = "";
-  audioSelect.innerHTML = "<option value='none'>Mặc định (Client)</option>";
+  if (audioSelect)
+    audioSelect.innerHTML = "<option value='mic'>Mặc định</option>";
 
   if (data.video && data.video.length > 0) {
     data.video.forEach((cam) => {
@@ -59,10 +58,9 @@ export function loadDevices(force = false) {
   else sendCommand("GET_DEVICES");
 }
 
-// --- LOGIC RECORD CLIENT-SIDE ---
 export function recordVideo() {
   const btnVid = document.getElementById("btnVid");
-  const btnStream = document.getElementById("btnToggleCamStream"); // Nut bat stream
+  const btnStream = document.getElementById("btnToggleCamStream");
   const imgView = document.getElementById("camStreamView");
   const canvas = document.getElementById("camRecorderCanvas");
   const stat = document.getElementById("vidStatus");
@@ -72,23 +70,34 @@ export function recordVideo() {
     return;
   }
 
-  // == DUNG QUAY ==
   if (isRecording) {
     stopRecordingLogic();
     return;
   }
 
-  // == BAT DAU QUAY ==
+  // Khởi động Audio để ghi âm
+  initAudio();
+  resumeAudio();
+
   try {
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext("2d");
-    const stream = canvas.captureStream(25);
 
-    let mime = "video/webm;codecs=vp8";
+    const vStream = canvas.captureStream(25);
+    const aStream = getAudioStream();
+
+    const tracks = [...vStream.getVideoTracks()];
+    if (aStream) {
+      tracks.push(...aStream.getAudioTracks());
+    }
+
+    const mixedStream = new MediaStream(tracks);
+
+    let mime = "video/webm;codecs=vp8,opus";
     if (!MediaRecorder.isTypeSupported(mime)) mime = "video/webm";
 
-    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+    mediaRecorder = new MediaRecorder(mixedStream, { mimeType: mime });
     recordedChunks = [];
 
     mediaRecorder.ondataavailable = (e) => {
@@ -106,10 +115,8 @@ export function recordVideo() {
     mediaRecorder.start();
     isRecording = true;
 
-    // YEU CAU 1: KHOA NUT TAT STREAM KHI DANG QUAY
     if (btnStream) btnStream.disabled = true;
 
-    // Update UI
     const mode = document.querySelector('input[name="recMode"]:checked').value;
     btnVid.textContent = "⏹️ DỪNG QUAY NGAY";
     btnVid.classList.add("btn-danger");
@@ -141,11 +148,9 @@ function stopRecordingLogic() {
   isRecording = false;
   recordTimeout = null;
 
-  // KHOI PHUC NUT STREAM
   const btnStream = document.getElementById("btnToggleCamStream");
   if (btnStream) btnStream.disabled = false;
 
-  // Reset UI
   const btnVid = document.getElementById("btnVid");
   btnVid.textContent = "🔴 BẮT ĐẦU QUAY";
   btnVid.classList.remove("btn-danger");
@@ -166,7 +171,6 @@ function saveRecordedFile() {
   }
 }
 
-// Helper (Khong dung)
 export function handleRecordVideoData(data) {}
 
 export function loadVidGallery() {
@@ -188,7 +192,7 @@ export function loadVidGallery() {
 }
 
 export function clearVideos() {
-  if (confirm("Xóa hết video?")) {
+  showConfirm("Xóa hết video đã lưu?", () => {
     if (!store.db) return;
     store.db
       .transaction(["videos"], "readwrite")
@@ -197,43 +201,36 @@ export function clearVideos() {
       loadVidGallery();
       logActionUI("Đã xóa thư viện video", true);
     };
-  }
+  });
 }
 
 export function toggleCamStream(btn) {
   const streamView = document.getElementById("camStreamView");
   const streamStatus = document.getElementById("camStreamStatus");
+  const btnMute = document.getElementById("btnMute");
 
-  // --- TRUONG HOP TAT STREAM ---
   if (btn === null) {
     store.isCamStreamOn = false;
+    streamView.removeAttribute("src");
+    streamView.src = "";
+    if (btnMute) btnMute.style.display = "none";
 
-    // YEU CAU 2: XOA ANH CU (DE HIEN MAN HINH DEN)
-    streamView.removeAttribute("src"); // Xoa han attribute src
-    streamView.src = ""; // Dam bao rong
-
-    // Reset Nut Bam
     const activeBtn = document.getElementById("btnToggleCamStream");
     if (activeBtn) {
       activeBtn.textContent = "▶️ Bật Stream";
       activeBtn.classList.remove("btn-danger");
       activeBtn.classList.add("btn-primary");
-      activeBtn.disabled = false; // Dam bao enable lai
+      activeBtn.disabled = false;
     }
     streamStatus.textContent = "";
-
-    // Neu dang quay thi dung quay
     if (isRecording) stopRecordingLogic();
     return;
   }
 
-  // --- LOGIC BAT/TAT KHI BAM NUT ---
   store.isCamStreamOn = !store.isCamStreamOn;
 
   if (store.isCamStreamOn) {
-    // YEU CAU 3: NGAT STREAM MAN HINH (NEU DANG CHAY)
     if (store.isScreenStreamOn) {
-      // Goi ham tat stream man hinh thong qua global window (do app.js gan vao)
       if (window.toggleScreenStream) window.toggleScreenStream(null);
     }
 
@@ -244,27 +241,19 @@ export function toggleCamStream(btn) {
       return;
     }
 
-    // Reset view truoc khi bat
     streamView.src = "";
+    if (btnMute) btnMute.style.display = "inline-block";
+    initAudio();
+    resumeAudio();
 
     btn.textContent = "⏹️ Tắt Stream";
     btn.classList.add("btn-danger");
     btn.classList.remove("btn-primary");
     streamStatus.textContent = "⏳ Đang kết nối...";
 
-    sendCommand("START_STREAM_CAM", { cam: camName, audio: "" });
+    sendCommand("START_STREAM_CAM", { cam: camName, audio: "mic" });
   } else {
-    // Tat thu cong bang nut
-    btn.textContent = "▶️ Bật Stream";
-    btn.classList.remove("btn-danger");
-    btn.classList.add("btn-primary");
-    streamStatus.textContent = "";
-
-    // Xoa anh
-    streamView.removeAttribute("src");
-    streamView.src = "";
-
+    toggleCamStream(null);
     sendCommand("STOP_STREAM");
-    if (isRecording) stopRecordingLogic();
   }
 }

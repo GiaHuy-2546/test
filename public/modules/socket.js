@@ -1,8 +1,7 @@
-// modules/socket.js (NANG CAP: Gui Device ID)
+// modules/socket.js
 import { store } from "./store.js";
-// Khong import 'ui' de tranh loi phu thuoc vong
+import { playPcmData, initAudio } from "./audio.js";
 
-// === FIX 3: Gui DEVICE_ID qua Query Parameter ===
 export const socket = new WebSocket(
   `ws://${window.location.host}?id=${store.DEVICE_ID}`
 );
@@ -13,100 +12,111 @@ export function onCommand(command, handler) {
   responseHandlers[command] = handler;
 }
 
-// 2. Ham xu ly trung tam KHI NHAN DU LIEU tu Gateway
 socket.onmessage = (event) => {
-  // Kiem tra stream binary (anh)
   if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
-    const url = URL.createObjectURL(
-      new Blob([event.data], { type: "image/jpeg" })
-    );
-    const screenView = document.getElementById("screenStreamView");
-    const camView = document.getElementById("camStreamView");
-    if (store.isScreenStreamOn && screenView) {
-      screenView.src = url;
-      screenView.onload = () => URL.revokeObjectURL(url);
-    } else if (store.isCamStreamOn && camView) {
-      camView.src = url;
-      camView.onload = () => URL.revokeObjectURL(url);
+    const reader = new FileReader();
+    reader.onload = function () {
+      const buffer = this.result;
+      const u8 = new Uint8Array(buffer);
+
+      // Header JPEG: FF D8
+      if (u8.length > 1 && u8[0] === 0xff && u8[1] === 0xd8) {
+        const url = URL.createObjectURL(
+          new Blob([buffer], { type: "image/jpeg" })
+        );
+        const screenView = document.getElementById("screenStreamView");
+        const camView = document.getElementById("camStreamView");
+        if (store.isScreenStreamOn && screenView) {
+          screenView.src = url;
+          screenView.onload = () => URL.revokeObjectURL(url);
+        } else if (store.isCamStreamOn && camView) {
+          camView.src = url;
+          camView.onload = () => URL.revokeObjectURL(url);
+        }
+      } else {
+        // Âm thanh PCM
+        initAudio();
+        playPcmData(buffer);
+      }
+    };
+
+    if (event.data instanceof Blob) reader.readAsArrayBuffer(event.data);
+    else reader.readAsArrayBuffer(new Blob([event.data]));
+    return;
+  }
+
+  // Xử lý JSON
+  try {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === "auth") {
+      window.dispatchEvent(
+        new CustomEvent("socket:auth", {
+          detail: {
+            status: msg.status,
+            message: msg.message,
+            clientInfo: msg.clientInfo,
+            deviceId: msg.deviceId,
+          },
+        })
+      );
+      return;
     }
-    return;
-  }
 
-  // Xu ly JSON
-  const msg = JSON.parse(event.data);
-
-  // Xu ly tin nhan Xac thuc
-  if (msg.type === "auth") {
-    window.dispatchEvent(
-      new CustomEvent("socket:auth", {
-        detail: {
-          status: msg.status,
-          message: msg.message,
-          clientInfo: msg.clientInfo, // Socket (IP:Port)
-          deviceId: msg.deviceId, // Ma Dinh Danh (CL_f1b9)
-        },
-      })
-    );
-    return;
-  }
-
-  if (msg.type === "stream_start") {
-    console.log("Nhan tin hieu STREAM_START tu server");
-    if (store.isScreenStreamOn)
-      document.getElementById("screenStreamStatus").textContent =
-        "✅ Đã kết nối luồng.";
-    if (store.isCamStreamOn)
-      document.getElementById("camStreamStatus").textContent =
-        "✅ Đã kết nối luồng.";
-    return;
-  }
-
-  if (msg.type === "stream_stop") {
-    console.log("Nhan tin hieu STREAM_STOP (tu Gateway)");
-    if (store.isScreenStreamOn) {
-      window.toggleScreenStream(null);
+    if (msg.type === "stream_start") {
+      console.log("Nhan tin hieu STREAM_START");
+      if (store.isScreenStreamOn)
+        document.getElementById("screenStreamStatus").textContent =
+          "✅ Đã kết nối luồng.";
+      if (store.isCamStreamOn)
+        document.getElementById("camStreamStatus").textContent =
+          "✅ Đã kết nối luồng.";
+      return;
     }
-    if (store.isCamStreamOn) {
-      window.toggleCamStream(null);
+
+    if (msg.type === "stream_stop") {
+      console.log("Nhan tin hieu STREAM_STOP");
+      if (store.isScreenStreamOn && window.toggleScreenStream)
+        window.toggleScreenStream(null);
+      if (store.isCamStreamOn && window.toggleCamStream)
+        window.toggleCamStream(null);
+      return;
     }
-    return;
-  }
 
-  if (msg.type === "error") {
-    window.dispatchEvent(
-      new CustomEvent("socket:error", {
-        detail: `Lỗi Gateway/TCP: ${msg.payload}`,
-      })
-    );
-    return;
-  }
-
-  if (msg.type === "json") {
-    const command = msg.command;
-    const payload = msg.payload;
-
-    if (responseHandlers[command]) {
-      responseHandlers[command](payload);
-    } else {
-      console.log("Nhan duoc phan hoi khong xu ly:", command, payload);
+    if (msg.type === "error") {
+      window.dispatchEvent(
+        new CustomEvent("socket:error", {
+          detail: `Lỗi Gateway/TCP: ${msg.payload}`,
+        })
+      );
+      return;
     }
+
+    if (msg.type === "json") {
+      const command = msg.command;
+      const payload = msg.payload;
+      if (responseHandlers[command]) {
+        responseHandlers[command](payload);
+      }
+    }
+  } catch (e) {
+    console.error("Loi parse JSON socket:", e);
   }
 };
 
 socket.onopen = () => {
-  console.log("WebSocket da ket noi! Dang cho xac thuc...");
-  // Doi su kien 'socket:auth'
+  console.log("WebSocket connected. Waiting auth...");
 };
 
 socket.onclose = (event) => {
-  console.error("WebSocket da dong!", event.reason);
+  console.error("WebSocket closed", event.reason);
   window.dispatchEvent(
     new CustomEvent("socket:close", { detail: event.reason })
   );
 };
 
 socket.onerror = (err) => {
-  console.error("Loi WebSocket!", err);
+  console.error("WebSocket error", err);
   window.dispatchEvent(
     new CustomEvent("socket:error", { detail: "Lỗi WebSocket Chung" })
   );
@@ -121,9 +131,6 @@ export function sendCommand(command, payload = null) {
       })
     );
   } else {
-    console.error(`Loi: WebSocket chua san sang (dinh goi lenh: ${command})!`);
-    window.dispatchEvent(
-      new CustomEvent("socket:error", { detail: "WebSocket not ready" })
-    );
+    console.error("WebSocket not ready");
   }
 }

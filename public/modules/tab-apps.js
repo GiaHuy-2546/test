@@ -1,8 +1,7 @@
 // modules/tab-apps.js
 import { sendCommand } from "./socket.js";
-import { logActionUI } from "./ui.js";
+import { logActionUI, showConfirm } from "./ui.js";
 
-// Ham nay se duoc 'app.js' dang ky voi 'onCommand'
 export function handleAppsData(list) {
   const tbody = document.querySelector("#appsTable tbody");
   if (!tbody || !Array.isArray(list)) return;
@@ -21,14 +20,12 @@ export function loadApps() {
 }
 
 export function closeWin(h, path, name) {
-  if (confirm("Đóng cửa sổ này?")) {
+  showConfirm(`Đóng cửa sổ "${name}"?`, () => {
     if (path && path !== "Unknown" && path.length > 3) addRecent(path, name);
-
-    sendCommand("CLOSE_HWND", h); // Gui lenh
-
+    sendCommand("CLOSE_HWND", h);
     logActionUI(`Đóng: ${name}`, true);
     setTimeout(loadApps, 1000);
-  }
+  });
 }
 
 export function startCmd(inpId, statId, cmdOverride = null) {
@@ -38,11 +35,8 @@ export function startCmd(inpId, statId, cmdOverride = null) {
   const statusEl = document.getElementById(statId);
   if (statusEl) statusEl.textContent = "⏳ ...";
 
-  // 1. Gui lenh MO
   sendCommand("START_CMD", val);
 
-  // 2. Them vao danh sach GAN DAY
-  // Lay ten file tu duong dan (vd: C:\Windows\notepad.exe -> notepad.exe)
   let name = val.split("\\").pop();
   addRecent(val, name);
 
@@ -50,14 +44,12 @@ export function startCmd(inpId, statId, cmdOverride = null) {
 
   if (statusEl) statusEl.textContent = "✅ Đã gửi lệnh";
 
-  // 3. Tai lai danh sach (hy vong no mo kip de hien thi)
   setTimeout(() => {
     if (document.getElementById("tab-apps").classList.contains("active"))
       loadApps();
-  }, 2000); // Apps mo len thuong cham, nen de 2s
+  }, 2000);
 }
 
-// --- TIEN ICH "MO GAN DAY" ---
 export function addRecent(path, name) {
   let r = JSON.parse(sessionStorage.getItem("recents") || "[]");
   r = r.filter((x) => x.path !== path);

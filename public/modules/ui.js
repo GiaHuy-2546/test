@@ -1,11 +1,10 @@
 // modules/ui.js
 
-// --- 1. LOGIC THEME (MOI) ---
+// --- 1. LOGIC THEME ---
 export function toggleTheme() {
   const body = document.body;
   body.classList.toggle("dark-mode");
 
-  // Luu trang thai vao LocalStorage
   if (body.classList.contains("dark-mode")) {
     localStorage.setItem("theme", "dark");
   } else {
@@ -13,19 +12,15 @@ export function toggleTheme() {
   }
 }
 
-// Khoi tao Theme khi tai trang
 function initTheme() {
   const savedTheme = localStorage.getItem("theme");
-  // Mac dinh la Light, neu luu Dark thi bat len
   if (savedTheme === "dark") {
     document.body.classList.add("dark-mode");
   }
 }
-// Goi ngay lap tuc
 initTheme();
 
 // --- 2. LOGIC THANH TRUOT (SLIDER) ---
-// (Giữ nguyên code cũ)
 function moveSlider(targetButton) {
   const slider = document.getElementById("tab-slider");
   if (!slider || !targetButton) return;
@@ -45,7 +40,6 @@ export function handleTabLeave() {
 }
 
 // --- 3. LOG & TAB UTILS ---
-// (Giữ nguyên code cũ)
 export function logActionUI(msg, success) {
   const list = document.getElementById("actionLogList");
   if (list) {
@@ -94,4 +88,32 @@ export function filterTable(tid, col, txt) {
           ? ""
           : "none")
     );
+}
+
+// --- 4. CUSTOM CONFIRM MODAL (MỚI) ---
+export function showConfirm(msg, callback) {
+  const m = document.getElementById("confirmModal");
+  const t = document.getElementById("confirmMsg");
+  const b = document.getElementById("btnConfirmYes");
+
+  if (m && t && b) {
+    t.textContent = msg;
+
+    // Clone nút Yes để xóa các event listener cũ
+    const nb = b.cloneNode(true);
+    b.parentNode.replaceChild(nb, b);
+
+    // Gán sự kiện mới
+    nb.onclick = () => {
+      callback();
+      closeConfirm();
+    };
+
+    m.style.display = "flex";
+  }
+}
+
+export function closeConfirm() {
+  const m = document.getElementById("confirmModal");
+  if (m) m.style.display = "none";
 }
