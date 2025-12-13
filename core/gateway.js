@@ -129,12 +129,7 @@ function handleTcpResponse(ws, line) {
       const data = JSON.parse(jsonPayload);
       let command = "UNKNOWN";
 
-      if (
-        data.log !== undefined ||
-        data.raw !== undefined ||
-        data.display !== undefined
-      )
-        command = "GET_KEYLOG";
+      if (data.log !== undefined) command = "GET_KEYLOG";
       else if (data.path !== undefined) command = "RECORD_VIDEO";
       else if (data.video !== undefined) command = "GET_DEVICES";
       else if (data.payload !== undefined) command = "GET_SCREENSHOT";
