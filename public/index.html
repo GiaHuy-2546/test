@@ -219,7 +219,10 @@
       </div>
 
       <div id="tab-keylog" class="tab-content">
-        <div class="card">
+        <div
+          class="card full-height"
+          style="display: flex; flex-direction: column"
+        >
           <div class="card-head">
             <h3>Nhật Ký Bàn Phím</h3>
             <label class="keylog-toggle-label">
@@ -232,12 +235,62 @@
               <strong>Bắt phím</strong>
             </label>
           </div>
-          <textarea
-            id="logArea"
-            readonly
-            placeholder="Tick vào ô trên để bắt đầu ghi..."
-          ></textarea>
-          <div class="control-row" style="justify-content: flex-end">
+
+          <div
+            style="
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              min-height: 0;
+            "
+          >
+            <div style="flex: 1; display: flex; flex-direction: column">
+              <label
+                style="
+                  font-size: 0.85em;
+                  color: var(--text-muted);
+                  margin-bottom: 3px;
+                "
+              >
+                📝 Văn bản hiển thị (Unicode/Unikey):
+              </label>
+              <textarea
+                id="logUnicode"
+                readonly
+                style="flex: 1; resize: none; border: 1px solid var(--success)"
+                placeholder="Chữ đã qua xử lý (Ví dụ: Trường đại học)..."
+              ></textarea>
+            </div>
+
+            <div style="flex: 1; display: flex; flex-direction: column">
+              <label
+                style="
+                  font-size: 0.85em;
+                  color: var(--text-muted);
+                  margin-bottom: 3px;
+                "
+              >
+                ⌨️ Phím vật lý (Raw/Gõ tắt):
+              </label>
+              <textarea
+                id="logRaw"
+                readonly
+                style="
+                  flex: 1;
+                  resize: none;
+                  border: 1px solid var(--primary);
+                  font-family: monospace;
+                "
+                placeholder="Phím thô (Ví dụ: Truowngf ddaij hocj)..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div
+            class="control-row"
+            style="justify-content: flex-end; margin-top: 10px"
+          >
             <button onclick="clearLogs()" class="btn-danger">
               Xóa Nhật Ký
             </button>
