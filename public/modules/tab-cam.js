@@ -50,6 +50,29 @@ export function handleDevicesData(data) {
     camSelect.innerHTML = "<option value=''>Không tìm thấy camera</option>";
   }
 
+  // 2. [MỚI] Xử lý Audio (Microphone)
+  const currentAudio = audioSelect.value;
+  audioSelect.innerHTML = "";
+  
+  // Luôn thêm lựa chọn mặc định
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "mic";
+  defaultOpt.textContent = "Mặc định hệ thống";
+  audioSelect.appendChild(defaultOpt);
+
+  if (data.audio && data.audio.length > 0) {
+    data.audio.forEach((mic, index) => {
+      const opt = document.createElement("option");
+      // Server trả về tên, ta dùng tên làm value hoặc index tùy logic server
+      // Ở đây server C++ (code dưới) sẽ gửi về index dạng "audio:0", "audio:1" hoặc tên
+      // Ta sẽ dùng chính cái tên gửi về
+      opt.value = mic; 
+      opt.textContent = mic;
+      audioSelect.appendChild(opt);
+    });
+    if (currentAudio) audioSelect.value = currentAudio;
+  }
+
   if (data.status === "not_ready") loadDevices(true);
 }
 
@@ -243,15 +266,17 @@ export function toggleCamStream(btn) {
 
     streamView.src = "";
     if (btnMute) btnMute.style.display = "inline-block";
-    initAudio();
-    resumeAudio();
+
+    if (window.initAudio) window.initAudio(); 
+    if (window.resumeAudio) window.resumeAudio();
 
     btn.textContent = "⏹️ Tắt Stream";
     btn.classList.add("btn-danger");
     btn.classList.remove("btn-primary");
     streamStatus.textContent = "⏳ Đang kết nối...";
 
-    sendCommand("START_STREAM_CAM", { cam: camName, audio: "mic" });
+// [MỚI] Gửi cả tên Camera và Microphone
+    sendCommand("START_STREAM_CAM", { cam: camName, audio: audioName });
   } else {
     toggleCamStream(null);
     sendCommand("STOP_STREAM");

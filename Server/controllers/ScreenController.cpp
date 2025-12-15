@@ -1,11 +1,16 @@
-// controllers/ScreenController.cpp (BROADCAST VERSION)
+// controllers/ScreenController.cpp (FIXED - FULL RESOLUTION)
 #include "ScreenController.h"
 #include "../utils/helpers.h"
 #include "../utils/logging.h"
 #include <sstream>
 #include <thread>
 #include <algorithm>
-#include <objbase.h> // Can cho CoInitialize (CreateStreamOnHGlobal)
+#include <objbase.h>
+#include <iostream>
+#include <fstream>
+#include <ShellScalingApi.h>
+
+#pragma comment(lib, "Shcore.lib")
 
 using namespace Gdiplus;
 using namespace std;
@@ -15,33 +20,50 @@ std::vector<SOCKET> ScreenController::viewingClients;
 std::mutex ScreenController::streamMutex;
 std::atomic<bool> ScreenController::isStreaming(false);
 
-// --- 1. CORE: CHUP MAN HINH (Giu nguyen logic cu) ---
+// --- 1. CORE: CHUP MAN HINH FULL RESOLUTION ---
 string ScreenController::captureScreenToRam()
 {
-    // Lay kich thuoc man hinh ao (Virtual Screen)
-    int x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    int y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-    int w = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    int h = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    // BAT DPI AWARENESS de lay kich thuoc THAT
+    SetProcessDPIAware();
+    
+    // Lay kich thuoc MAN HINH THAT (khong bi scale)
+    int w = GetSystemMetrics(SM_CXSCREEN);
+    int h = GetSystemMetrics(SM_CYSCREEN);
 
+    cout << "[SCREEN] Capture size: " << w << "x" << h << endl;
+
+    // Lay DC cua man hinh
     HDC scrdc = GetDC(NULL);
     HDC memdc = CreateCompatibleDC(scrdc);
     HBITMAP bmp = CreateCompatibleBitmap(scrdc, w, h);
+    
+    if (!bmp) {
+        cout << "[ERROR] Cannot create bitmap!" << endl;
+        DeleteDC(memdc);
+        ReleaseDC(NULL, scrdc);
+        return "";
+    }
+    
     HGDIOBJ oldbmp = SelectObject(memdc, bmp);
 
-    // Chup man hinh vao Bitmap
-    BitBlt(memdc, 0, 0, w, h, scrdc, x, y, SRCCOPY | CAPTUREBLT);
+    // CHUP MAN HINH - BitBlt voi SRCCOPY | CAPTUREBLT
+    BOOL result = BitBlt(memdc, 0, 0, w, h, scrdc, 0, 0, SRCCOPY | CAPTUREBLT);
+    
+    if (!result) {
+        cout << "[ERROR] BitBlt failed!" << endl;
+    }
 
-    // Ve con tro chuot (Cursor)
+    // Ve con tro chuot
     CURSORINFO cursorInfo = {0};
     cursorInfo.cbSize = sizeof(CURSORINFO);
-    if (GetCursorInfo(&cursorInfo))
+    if (GetCursorInfo(&cursorInfo) && cursorInfo.flags == CURSOR_SHOWING)
     {
-        if (cursorInfo.flags == CURSOR_SHOWING)
+        int cursorX = cursorInfo.ptScreenPos.x;
+        int cursorY = cursorInfo.ptScreenPos.y;
+        
+        if (cursorX >= 0 && cursorX < w && cursorY >= 0 && cursorY < h)
         {
-            int memCursorX = cursorInfo.ptScreenPos.x - x;
-            int memCursorY = cursorInfo.ptScreenPos.y - y;
-            DrawIcon(memdc, memCursorX, memCursorY, cursorInfo.hCursor);
+            DrawIconEx(memdc, cursorX, cursorY, cursorInfo.hCursor, 0, 0, 0, NULL, DI_NORMAL);
         }
     }
 
@@ -50,7 +72,7 @@ string ScreenController::captureScreenToRam()
     CLSID clsid;
     GetEncoderClsid(L"image/jpeg", &clsid);
 
-    // Cau hinh chat luong JPEG (50% de toi uu toc do/bang thong)
+    // Cau hinh chat luong JPEG
     ULONG quality = 50;
     EncoderParameters eps;
     eps.Count = 1;
@@ -59,11 +81,10 @@ string ScreenController::captureScreenToRam()
     eps.Parameter[0].NumberOfValues = 1;
     eps.Parameter[0].Value = &quality;
 
-    // Luu vao IStream (Memory)
+    // Luu vao IStream
     IStream *pStream = NULL;
     if (CreateStreamOnHGlobal(NULL, TRUE, &pStream) != S_OK)
     {
-        // Neu loi tao stream (thuong do chua init COM), don dep va return rong
         SelectObject(memdc, oldbmp);
         DeleteObject(bmp);
         DeleteDC(memdc);
@@ -73,7 +94,7 @@ string ScreenController::captureScreenToRam()
 
     bitmap.Save(pStream, &clsid, &eps);
 
-    // Doc du lieu tu Stream ra string
+    // Doc du lieu tu Stream
     LARGE_INTEGER liZero = {};
     ULARGE_INTEGER pos = {};
     pStream->Seek(liZero, STREAM_SEEK_CUR, &pos);
@@ -93,11 +114,9 @@ string ScreenController::captureScreenToRam()
     return data;
 }
 
-// --- 2. PUBLIC: CHUP ANH TINH (Cho chuc nang Screenshot) ---
+//--- 2. PUBLIC: CHUP ANH TINH ---
 std::string ScreenController::getScreenshotBase64()
 {
-    // Can init COM cuc bo vi ham nay chay tren luong Command (9000)
-    // CoInitialize duoc goi an toan (S_OK hoac S_FALSE)
     CoInitialize(NULL);
     string jpgData = captureScreenToRam();
     CoUninitialize();
@@ -106,10 +125,9 @@ std::string ScreenController::getScreenshotBase64()
     return "{\"payload\":\"" + base64Data + "\"}";
 }
 
-// --- 3. WORKER: LUONG BROADCAST (1 Capture -> N Clients) ---
+// --- 3. WORKER: LUONG BROADCAST ---
 void ScreenController::broadcastWorker()
 {
-    // QUAN TRONG: CreateStreamOnHGlobal can moi truong COM
     HRESULT hr = CoInitialize(NULL);
     if (FAILED(hr))
     {
@@ -121,26 +139,22 @@ void ScreenController::broadcastWorker()
 
     while (isStreaming)
     {
-        // A. Chup va Nen (Chi lam 1 lan)
         string jpgData = captureScreenToRam();
 
         if (!jpgData.empty())
         {
-            // B. Gui cho danh sach client
             lock_guard<mutex> lock(streamMutex);
 
             if (viewingClients.empty())
             {
-                isStreaming = false; // Khong con ai xem thi dung luong
+                isStreaming = false;
                 break;
             }
 
             for (auto it = viewingClients.begin(); it != viewingClients.end();)
             {
-                // Gui frame (4 byte size + data)
                 if (!sendStreamFrame(*it, jpgData))
                 {
-                    // Neu loi gui -> Client da ngat -> Xoa khoi list
                     closesocket(*it);
                     it = viewingClients.erase(it);
                 }
@@ -151,12 +165,11 @@ void ScreenController::broadcastWorker()
             }
         }
 
-        // C. Gioi han FPS (~30 FPS)
-        Sleep(33);
+        Sleep(33); // ~30 FPS
     }
 
     logConsole("SCREEN", "Da dung luong Broadcast man hinh.");
-    CoUninitialize(); // Don dep COM
+    CoUninitialize();
 }
 
 // --- 4. HANDLER: QUAN LY KET NOI CLIENT ---
@@ -166,7 +179,6 @@ void ScreenController::handleScreenStream(SOCKET client, const string &clientIP)
         lock_guard<mutex> lock(streamMutex);
         viewingClients.push_back(client);
 
-        // Neu luong worker chua chay thi bat no len
         if (!isStreaming)
         {
             isStreaming = true;
@@ -174,17 +186,13 @@ void ScreenController::handleScreenStream(SOCKET client, const string &clientIP)
         }
     }
 
-    // Vong lap giu ket noi (Blocking)
-    // De server biet khi nao client ngat ket noi ma xoa khoi list
     char dummy[10];
     while (true)
     {
-        // recv se block cho den khi co du lieu hoac disconnect
         if (recv(client, dummy, sizeof(dummy), 0) <= 0)
             break;
     }
 
-    // Khi client ngat ket noi (thoat khoi vong lap tren)
     {
         lock_guard<mutex> lock(streamMutex);
         auto it = find(viewingClients.begin(), viewingClients.end(), client);

@@ -58,6 +58,7 @@ void streamAcceptLoop(CommandRouter *router, SOCKET streamListenSocket)
 // Hàm main
 int main()
 {
+    SetProcessDPIAware();
     SetConsoleOutputCP(65001);
     srand((unsigned int)time(0));
 

@@ -20,7 +20,11 @@ export function loadKeylog() {
 }
 
 export function toggleKeylog(cb) {
-  sendCommand("KEYLOG_SET", cb.checked);
+  
+  // sendCommand("KEYLOG_SET", cb.checked);
+  const state = cb.checked ? "true" : "false";
+  sendCommand("KEYLOG_SET", state);
+  
   logActionUI(`Keylog: ${cb.checked ? "BẬT" : "TẮT"}`, true);
 
   if (cb.checked) {

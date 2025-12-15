@@ -68,6 +68,21 @@ WAVEHDR DeviceController::waveHeaders[3];
 char DeviceController::audioBuffers[3][1024];
 
 // --- 1. LAY DANH SACH ---
+
+// [THEM] Helper lay danh sach mic
+vector<string> DeviceController::getAudioDevices()
+{
+    vector<string> devices;
+    int waveInDevices = waveInGetNumDevs();
+    WAVEINCAPSA waveInCaps;
+    for (int i = 0; i < waveInDevices; i++)
+    {
+        if (waveInGetDevCapsA(i, &waveInCaps, sizeof(WAVEINCAPSA)) == MMSYSERR_NOERROR)
+            devices.push_back(string(waveInCaps.szPname));
+    }
+    return devices;
+}
+
 void DeviceController::buildDeviceListJson()
 {
     if (G_IS_REFRESHING.exchange(true))
@@ -90,8 +105,21 @@ void DeviceController::buildDeviceListJson()
         getCaptureDeviceName(i, name, 256);
         json_ss << (i ? "," : "") << "\"" << jsonEscape(string(name)) << "\"";
     }
-    json_ss << "],\"audio\":[\"Microphone (Client-side)\"]}";
+    // json_ss << "],\"audio\":[\"Microphone (Client-side)\"]}";
 
+    json_ss << "],\"audio\":[";
+
+    // Quet danh sach Mic
+    DeviceController dc;
+    vector<string> mics = dc.getAudioDevices();
+    for (size_t i = 0; i < mics.size(); ++i)
+    {
+        json_ss << (i ? "," : "") << "\"" << jsonEscape(mics[i]) << "\"";
+    }
+    json_ss << "]}";
+
+
+    
     {
         lock_guard<mutex> lock(G_DEVICE_LIST_MUTEX);
         G_DEVICE_LIST_JSON = json_ss.str();
@@ -112,7 +140,7 @@ string DeviceController::getDevices(bool refresh)
 }
 
 // --- 2. STREAMING WORKER ---
-void DeviceController::broadcastWorker(string camName)
+void DeviceController::broadcastWorker(string camName, string audioName)
 {
     HRESULT hr = CoInitialize(NULL);
     if (FAILED(hr))
@@ -123,7 +151,26 @@ void DeviceController::broadcastWorker(string camName)
 
     logConsole("CAM", "Bat dau luong camera: " + camName);
 
-    startAudioCapture();
+
+    // startAudioCapture();
+
+    // --- LOGIC TIM MIC ---
+    int micIndex = 0; // Mac dinh la 0 (Mic dau tien)
+    if (audioName != "mic") // Neu client co chon mic cu the
+    {
+        vector<string> mics = getAudioDevices();
+        for(size_t i=0; i<mics.size(); i++) {
+            // So sanh ten mic client gui len voi danh sach
+            if(mics[i] == audioName) {
+                micIndex = i;
+                break;
+            }
+        }
+    }
+    // Bat ghi am voi ID da tim duoc (mac dinh la WAVE_MAPPER neu khong tim thay)
+    startAudioCapture(micIndex);
+
+
 
     if (setupESCAPI() == 0)
     {
@@ -247,7 +294,7 @@ void CALLBACK DeviceController::AudioCallback(HWAVEIN hwi, UINT uMsg, DWORD_PTR 
     }
 }
 
-void DeviceController::startAudioCapture()
+void DeviceController::startAudioCapture(int devID)
 {
     WAVEFORMATEX format;
     format.wFormatTag = WAVE_FORMAT_PCM;
@@ -259,7 +306,9 @@ void DeviceController::startAudioCapture()
     format.cbSize = 0;
 
     // Mở thiết bị ghi âm mặc định (WAVE_MAPPER)
-    MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &format, (DWORD_PTR)AudioCallback, 0, CALLBACK_FUNCTION);
+    // MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &format, (DWORD_PTR)AudioCallback, 0, CALLBACK_FUNCTION);
+    MMRESULT result = waveInOpen(&hWaveIn, devID, &format, (DWORD_PTR)AudioCallback, 0, CALLBACK_FUNCTION);
+
     if (result != MMSYSERR_NOERROR)
     {
         logConsole("AUDIO", "Khong the mo Microphone. Ma loi: " + to_string(result));
@@ -300,7 +349,8 @@ void DeviceController::handleStreamCam(SOCKET client, const string &clientIP, co
         if (!isStreaming)
         {
             isStreaming = true;
-            std::thread(&DeviceController::broadcastWorker, this, cam).detach();
+            // std::thread(&DeviceController::broadcastWorker, this, cam).detach();
+            std::thread(&DeviceController::broadcastWorker, this, cam, audio).detach();
         }
     }
 
