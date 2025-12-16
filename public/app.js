@@ -5,6 +5,7 @@ import {
   logActionUI,
   toggleActionLog,
   toggleTheme,
+  initTheme,
   showTab as uiShowTab,
   filterTable,
   handleTabHover,
@@ -20,6 +21,8 @@ import * as camTab from "./modules/tab-cam.js";
 import * as keylogTab from "./modules/tab-keylog.js";
 import * as sysTab from "./modules/tab-sys.js";
 import * as audioMod from "./modules/audio.js";
+
+initTheme();
 
 const showTab = (id) => {
   if (store.isScreenStreamOn || store.isCamStreamOn) {
@@ -82,7 +85,7 @@ function showAuthScreen(emoji, message, color) {
         <div style="padding: 40px; text-align: center; font-size: 1.2em; white-space: pre-wrap; color: ${color}; background: #222; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0; line-height: 1.6;">
             <div style="font-size: 3em; margin-bottom: 20px;">${emoji}</div>
             <pre style="font-family: inherit; margin: 0;">${message}</pre>
-            <div style="font-size: 0.8em; color: #888; margin-top: 20px; font-family: monospace;">
+            <div style="font-size: 0.8em; color: #888; margin-top: 20px; font-family: monospace; ">
                 Device ID: ${store.DEVICE_ID || "N/A"}
             </div>
         </div>
@@ -95,6 +98,26 @@ window.addEventListener("socket:auth", (event) => {
   if (deviceId) store.DEVICE_ID = deviceId;
 
   if (status === "approved") {
+    // --- BẮT ĐẦU SỬA ---
+    
+    // Kiểm tra: Nếu chưa có "cờ" đánh dấu trong sessionStorage thì mới reload
+    if (!sessionStorage.getItem("auth_reloaded")) {
+        // 1. Đánh dấu là chuẩn bị reload
+        sessionStorage.setItem("auth_reloaded", "true");
+        
+        // 2. Thực hiện reload
+        logActionUI("Đang tải lại trang...", true);
+        setTimeout(() => window.location.reload(), 500);
+        
+        return; // Dừng code tại đây để chờ reload, không chạy đoạn hiển thị bên dưới
+    }
+
+    // Nếu chạy xuống được đây, tức là đã reload xong rồi (đã có cờ)
+    // Ta xóa cờ đi để lần sau người dùng F5 thủ công thì logic vẫn đúng
+    sessionStorage.removeItem("auth_reloaded");
+
+    // --- KẾT THÚC SỬA ---
+    
     logActionUI("Đã kết nối và xác thực!", true);
     store.socketReady = true;
     showTab("apps");
@@ -152,3 +175,5 @@ DB_REQ.onsuccess = (e) => {
 
 const logArea = document.getElementById("logArea");
 if (logArea) logArea.value = sessionStorage.getItem("keylogs") || "";
+
+

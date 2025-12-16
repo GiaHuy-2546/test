@@ -3,22 +3,76 @@
 // --- 1. LOGIC THEME ---
 export function toggleTheme() {
   const body = document.body;
+  const bgContainer = document.querySelector('.background-container');
+  const btn = document.getElementById('btnTheme');
   body.classList.toggle("dark-mode");
-
-  if (body.classList.contains("dark-mode")) {
-    localStorage.setItem("theme", "dark");
-  } else {
-    localStorage.setItem("theme", "light");
+  if (bgContainer) {
+    bgContainer.classList.toggle('show-night');
   }
-}
+  const isDarkNow = body.classList.contains("dark-mode");
 
-function initTheme() {
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    document.body.classList.add("dark-mode");
+  // 3. CẬP NHẬT TITLE VÀ STORAGE THEO TRẠNG THÁI MỚI
+  if (btn) {
+      // --- ĐOẠN LOGIC ĐÃ SỬA ---
+      if (isDarkNow) {
+          // Nếu trạng thái MỚI là Tối -> Lần bấm tiếp theo sẽ chuyển sang Sáng
+          btn.title = "Chuyển chế độ Sáng";
+      } else {
+          // Nếu trạng thái MỚI là Sáng -> Lần bấm tiếp theo sẽ chuyển sang Tối
+          btn.title = "Chuyển chế độ Tối";
+      }
+      // --- HẾT ĐOẠN SỬA ---
   }
+
+  // Lưu trạng thái đúng vào localStorage
+  localStorage.setItem("theme", isDarkNow ? "dark" : "light");
 }
-initTheme();
+//   body.classList.toggle("dark-mode");
+
+//   if (body.classList.contains("dark-mode")) {
+//     localStorage.setItem("theme", "dark");
+//   } else {
+//     localStorage.setItem("theme", "light");
+//   }
+// } 
+
+// function initTheme() {
+//   const savedTheme = localStorage.getItem("theme");
+//   if (savedTheme === "dark") {
+//     document.body.classList.add("dark-mode");
+//   }
+// }
+export function initTheme() {
+    // 1. Lấy trạng thái cũ từ localStorage
+    const savedTheme = localStorage.getItem("theme");
+    
+    const body = document.body;
+    const bgContainer = document.querySelector('.background-container');
+    const btn = document.getElementById('btnTheme');
+
+    // 2. Logic đồng bộ hóa
+    if (savedTheme === "dark") {
+        // --- NẾU LÀ DARK MODE ---
+        body.classList.add("dark-mode"); // Thêm class cho body
+        
+        // QUAN TRỌNG: Phải bật cả Background tối lên cho khớp
+        if (bgContainer) bgContainer.classList.add("show-night");
+        
+        // Cập nhật title nút
+        if (btn) btn.title = "Chuyển chế độ Sáng";
+        
+    } else {
+        // --- NẾU LÀ LIGHT MODE (Mặc định) ---
+        body.classList.remove("dark-mode");
+        
+        // QUAN TRỌNG: Tắt Background tối đi
+        if (bgContainer) bgContainer.classList.remove("show-night");
+        
+        // Cập nhật title nút
+        if (btn) btn.title = "Chuyển chế độ Tối";
+    }
+}
+// initTheme();
 
 // --- 2. LOGIC THANH TRUOT (SLIDER) ---
 function moveSlider(targetButton) {
@@ -117,3 +171,4 @@ export function closeConfirm() {
   const m = document.getElementById("confirmModal");
   if (m) m.style.display = "none";
 }
+

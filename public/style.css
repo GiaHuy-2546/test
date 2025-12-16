@@ -30,7 +30,7 @@
   --log-border: rgba(255, 255, 255, 0.2);
 }
 
-body.dark-mode {
+/* body.dark-mode {
   --bg: #2d0a1f;
   --container-bg: #1a0d15;
   --card-bg: rgba(26, 13, 21, 0.9);
@@ -39,7 +39,7 @@ body.dark-mode {
   --input-bg: rgba(255, 255, 255, 0.05);
   --table-head-bg: rgba(0, 0, 0, 0.4);
   --recent-bg: rgba(0, 0, 0, 0.3);
-}
+} */
 
 * {
   box-sizing: border-box;
@@ -53,7 +53,7 @@ body.dark-mode {
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg);
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('./image/background_after_fix.png');
+  /* background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('./image/background_sang.png'); */
   
   background-size: cover;
   background-position: center;
@@ -166,7 +166,7 @@ header h1 {
 }
 
 .theme-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgb(109, 110, 109, 0.3); 
 }
 
 .client-info {
@@ -175,7 +175,7 @@ header h1 {
   color: #fff;
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   backdrop-filter: blur(10px);
   font-family: monospace;
@@ -1115,4 +1115,207 @@ select.input-field option {
     background-color: #333 !important;
     color: #fff !important;
     padding: 10px;
+}
+
+/* --- 1. CẤU HÌNH NÚT (Code của bạn) --- */
+.icon-btn {
+  padding: 6px;
+  width: 43px;  /* Nút to 43px */
+  height: 43px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Căn icon vào chính giữa */
+  overflow: hidden; 
+  transition: background 0.3s;
+}
+
+/* --- 2. CẤU HÌNH ICON SUN/MOON --- */
+.sun-moon {
+  /* 🔥 QUAN TRỌNG: Chỉnh số này để icon to/nhỏ trong nút */
+  /* Với nút 43px, mình đặt icon 20px là vừa đẹp (tính cả tia nắng là ~34px) */
+  font-size: 20px; 
+  width: 1em; 
+  height: 1em;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.5s ease;
+  
+  /* Màu mặc định (Mặt trời) */
+  background-color: #f39c12;
+  box-shadow: 0 0 0.35em #f1c40f; 
+}
+
+/* Tia nắng (Dựa theo font-size ở trên) */
+.sun-moon::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 1.7em; height: 1.7em; /* Tổng độ rộng tia nắng = 1.7 * 20px = 34px */
+  border: 0.15em dashed #f39c12; 
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  transition: all 0.5s ease;
+}
+
+/* --- 3. TRẠNG THÁI DARK MODE (Mặt trăng) --- */
+body.dark-mode .sun-moon {
+  background-color: transparent;
+  
+  /* Tạo hình lưỡi liềm */
+  box-shadow: -0.29em 0.165em 0 0 #f1c40f; 
+  
+  /* Căn chỉnh lại vào giữa nút */
+  transform: rotate(-30deg) scale(0.9) translate(0.3em, -0.15em);
+}
+
+/* Ẩn tia nắng khi thành mặt trăng */
+body.dark-mode .sun-moon::before {
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+}
+
+/* Đổi màu nền nút khi tối */
+body.dark-mode .icon-btn {
+  background: #333;
+  border-color: #555;
+}
+
+/* --- 1. KHUNG CHỨA ICON --- */
+.cloud-snow {
+  font-size: 20px; /* Điều chỉnh kích thước icon tại đây */
+  position: relative;
+  width: 2.2em;
+  height: 2em; /* Tăng chiều cao chút để chứa tuyết rơi */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- 2. VẼ ĐÁM MÂY (Mặc định là màu Xám - Tắt) --- */
+.cloud-body {
+  position: absolute;
+  top: 40%; /* Vị trí mây */
+  width: 1.8em;
+  height: 0.6em;
+  background: #b0c4de; /* Màu xám xanh nhạt (Mây thường) */
+  border-radius: 1em;
+  transition: all 0.4s ease; /* Hiệu ứng chuyển màu mượt */
+  z-index: 2;
+}
+
+/* Tạo hình phồng cho mây */
+.cloud-body::before,
+.cloud-body::after {
+  content: "";
+  position: absolute;
+  background: inherit; /* Ăn theo màu của cloud-body */
+  border-radius: 50%;
+}
+
+.cloud-body::before {
+  width: 0.8em; height: 0.8em;
+  top: -0.4em; left: 0.25em;
+}
+
+.cloud-body::after {
+  width: 0.5em; height: 0.5em;
+  top: -0.2em; right: 0.3em;
+}
+
+/* --- 3. HẠT TUYẾT (Mặc định ẩn đi) --- */
+.snow-drops {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 4px; height: 4px;
+  background: transparent;
+  border-radius: 50%;
+  z-index: 1;
+  opacity: 0; /* Ẩn khi chưa bật */
+  transition: opacity 0.3s;
+}
+
+/* --- 4. TRẠNG THÁI ACTIVE (Khi có class .snow-active) --- */
+
+/* Đám mây chuyển màu Xanh */
+.snow-active .cloud-body {
+  background: #3498db; /* Màu xanh da trời */
+  transform: translateY(-2px); /* Nhích lên 1 chút */
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3); /* Đổ bóng nhẹ cho đẹp */
+}
+
+/* Hiện hạt tuyết và bắt đầu rơi */
+.snow-active .snow-drops {
+  opacity: 1;
+  /* Tạo 3 hạt tuyết bằng box-shadow */
+  /* Cú pháp: x y blur spread color */
+  box-shadow: 
+    -0.5em 0 0 -1px #3498db, 
+     0     0 0 -1px #3498db, 
+     0.5em 0 0 -1px #3498db;
+  
+  /* Chạy animation rơi */
+  animation: snow-fall 0.8s linear infinite;
+}
+
+/* Animation tuyết rơi */
+@keyframes snow-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(12px); /* Rơi xuống 12px */
+    opacity: 0; /* Mờ dần */
+  }
+}
+
+/* Đổi màu chủ đề*/
+body.dark-mode {
+  --bg: #2d0a1f;
+  --container-bg: #1a0d15;
+  --card-bg: rgba(26, 13, 21, 0.9);
+  --header-bg: #00b67a;
+  --tab-bg: rgba(0, 182, 122, 0.2);
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --table-head-bg: rgba(0, 0, 0, 0.4);
+  --recent-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Container chính để giữ vị trí */
+.background-container {
+    position: fixed; /* Cố định toàn màn hình */
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1; /* Nằm dưới cùng nội dung */
+}
+
+/* Style chung cho các lớp nền */
+.bg-layer {
+    position: absolute; /* Chồng lên nhau */
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    /* DÒNG QUAN TRỌNG: Transition cho độ mờ */
+    transition: opacity 0.8s ease-in-out;
+}
+
+/* Thiết lập ảnh */
+.bg-day {
+    background-image: url('./image/background_sang.png');
+    z-index: 1; /* Nằm dưới */
+}
+.bg-night {
+    background-image: url('./image/background_toi.png');
+    z-index: 2; /* Nằm trên */
+    opacity: 0; /* Mặc định ẩn đi (trong suốt) */
+}
+
+/* KHI KÍCH HOẠT CHẾ ĐỘ TỐI */
+/* Khi container cha có class .show-night, thì lớp .bg-night hiện lên */
+.background-container.show-night .bg-night {
+    opacity: 1; /* Hiện rõ dần lên */
 }

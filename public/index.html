@@ -7,24 +7,23 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
+  
     <div class="container">
       <header style="justify-content: space-between;">
         
-        <div id="client-info" class="client-info" style="position: absolute; left: 5%; top: 10px; transform: translateX(-10%);">
+        <div id="client-info" class="client-info" style="position: absolute; left: 4%; top: 13px; transform: translateX(-10%);">
           Đang kết nối...
         </div>
 
-        <h1 style="display: inline-block; position: absolute; left: 50%; top: -2px; transform: translateX(-50%);">Điều khiển máy tính từ xa</h1>
-        /*chinh sua vi tri cho nay*/
-        <div style="display: flex; align-items: center; gap: 2px">
+        <h1 style="display: inline-block; position: absolute; left: 50%; top: -5px; transform: translateX(-50%); font-size: 43px;">Điều khiển máy tính từ xa</h1>
+        <!--<div style="display: flex; align-items: center; position: relative; left: 90%; top: -15px; transform: translateX(-40%); gap: 2px">
           <button
             id="btnSnow"
             class="theme-toggle-btn"
             onclick="toggleSnow()"
             title="Bật/Tắt hiệu ứng tuyết"
-            style="padding: 4px 8px; font-size: 11px;" 
+            style="padding: 4px 8px; font-size: 15px;" 
           >
-            <!-- ❄️ Snow -->
             ❄️
           </button>
 
@@ -34,9 +33,35 @@
             title="Chuyển chế độ Sáng/Tối"
             style="padding: 4px 8px; font-size: 11px;"
           >
-            <!-- 🌗 Mode -->
              🌗
           </button>
+        </div> -->
+        <div class="background-container">
+          <div class="bg-layer bg-day"></div>   <div class="bg-layer bg-night"></div> </div>
+        <div style="display: flex; align-items: center; position: relative; left: 92%; top: -17px; transform: translateX(-40%); gap: 10px">
+  
+          <button
+            id="btnSnow"
+            class="theme-toggle-btn icon-btn snow-active"
+            onclick="toggleSnow()"
+            title="Tắt hiệu ứng tuyết"
+          >
+            <div class="cloud-snow">
+              <div class="cloud-body"></div>
+              <div class="snow-drops"></div>
+            </div>
+          </button>
+
+          <button
+            id="btnTheme"
+            class="theme-toggle-btn icon-btn"
+            class="bg-layer bg-day bg-layer bg-night"
+            onclick="toggleTheme()"
+            title="Chuyển chế độ Tối"
+          >
+            <div class="sun-moon"></div>
+          </button>
+
         </div>
         
         </header>
@@ -459,6 +484,17 @@
         window.isSnowOn = !window.isSnowOn;
         
         const snows = document.querySelectorAll('.snowflake');
+        const btn = document.getElementById('btnSnow');
+        if (btn) {
+          btn.classList.toggle("snow-active");
+          // --- PHẦN MỚI: ĐỔI TITLE ---
+          if (window.isSnowOn) {
+            btn.title = "Tắt hiệu ứng tuyết";
+          } else {
+            btn.title = "Bật hiệu ứng tuyết";
+        }
+        }
+        
         snows.forEach(s => {
           s.style.display = window.isSnowOn ? 'block' : 'none';
         });
