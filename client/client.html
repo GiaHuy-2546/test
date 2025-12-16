@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Remote Control Launcher</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #1e1e1e;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        background: #2d2d2d;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        width: 350px;
+        text-align: center;
+      }
+      h2 {
+        margin-bottom: 20px;
+        color: #61dafb;
+      }
+      .info-box {
+        background: #333;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border: 1px solid #444;
+        font-size: 0.9em;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        background: #1e1e1e;
+        color: #fff;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #007acc;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        transition: 0.3s;
+      }
+      button:hover {
+        background: #005f9e;
+      }
+
+      .history-area {
+        margin-top: 25px;
+        text-align: left;
+      }
+      .history-label {
+        font-size: 0.85em;
+        color: #aaa;
+        margin-bottom: 5px;
+      }
+      .history-list {
+        max-height: 150px;
+        overflow-y: auto;
+        background: #1e1e1e;
+        border-radius: 5px;
+        border: 1px solid #333;
+      }
+      .history-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #333;
+        cursor: pointer;
+        font-size: 0.9em;
+        display: flex;
+        justify-content: space-between;
+      }
+      .history-item:hover {
+        background: #333;
+      }
+      .history-item:last-child {
+        border-bottom: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🚀 Remote Launcher</h2>
+
+      <div class="info-box">
+        Client ID: <strong id="clientIdDisplay">...</strong>
+      </div>
+
+      <input
+        type="text"
+        id="ipInput"
+        placeholder="Nhập IP Server (VD: 192.168.1.10)"
+      />
+      <button onclick="connectToServer()">KẾT NỐI</button>
+
+      <div class="history-area">
+        <div class="history-label">Lịch sử kết nối:</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <script>
+      // 1. Quản lý ID Client
+      let clientId = localStorage.getItem("launcher_client_id");
+      if (!clientId) {
+        // Tạo ID ngẫu nhiên nếu chưa có
+        clientId =
+          "CL_" + Math.random().toString(36).substr(2, 6).toUpperCase();
+        localStorage.setItem("launcher_client_id", clientId);
+      }
+      document.getElementById("clientIdDisplay").textContent = clientId;
+
+      // 2. Quản lý Lịch sử IP
+      const historyListEl = document.getElementById("historyList");
+      const ipInputEl = document.getElementById("ipInput");
+
+      function loadHistory() {
+        const history = JSON.parse(localStorage.getItem("ip_history") || "[]");
+        historyListEl.innerHTML = "";
+        if (history.length === 0) {
+          historyListEl.innerHTML =
+            '<div style="padding:10px;color:#666;text-align:center">Chưa có lịch sử</div>';
+          return;
+        }
+        history.forEach((ip) => {
+          const div = document.createElement("div");
+          div.className = "history-item";
+          div.innerHTML = `<span>${ip}</span> <span style="color:#666">↺</span>`;
+          div.onclick = () => {
+            ipInputEl.value = ip;
+          };
+          historyListEl.appendChild(div);
+        });
+      }
+
+      // 3. Hàm Kết Nối
+      function connectToServer() {
+        let ip = ipInputEl.value.trim();
+        if (!ip) {
+          alert("Vui lòng nhập IP Server!");
+          return;
+        }
+
+        // Lưu vào lịch sử (Không lưu trùng)
+        let history = JSON.parse(localStorage.getItem("ip_history") || "[]");
+        history = history.filter((item) => item !== ip); // Xóa cũ nếu trùng
+        history.unshift(ip); // Thêm vào đầu
+        if (history.length > 10) history.pop(); // Giới hạn 10 IP
+        localStorage.setItem("ip_history", JSON.stringify(history));
+
+        // Chuyển hướng sang Web Server thật
+        // Truyền kèm ClientID qua URL để Server nhận diện đúng ID này
+        window.location.href = `http://${ip}:8080?importedId=${clientId}`;
+      }
+
+      // Khởi chạy
+      loadHistory();
+    </script>
+  </body>
+</html>

@@ -30,17 +30,6 @@
   --log-border: rgba(255, 255, 255, 0.2);
 }
 
-/* body.dark-mode {
-  --bg: #2d0a1f;
-  --container-bg: #1a0d15;
-  --card-bg: rgba(26, 13, 21, 0.9);
-  --header-bg: #00b67a;
-  --tab-bg: rgba(0, 182, 122, 0.2);
-  --input-bg: rgba(255, 255, 255, 0.05);
-  --table-head-bg: rgba(0, 0, 0, 0.4);
-  --recent-bg: rgba(0, 0, 0, 0.3);
-} */
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1305,7 +1294,7 @@ body.dark-mode {
 
 /* Thiết lập ảnh */
 .bg-day {
-    background-image: url('./image/background_sang.png');
+    background-image: url('./image/background_sang.jpg');
     z-index: 1; /* Nằm dưới */
 }
 .bg-night {

@@ -27,21 +27,7 @@ export function toggleTheme() {
   // Lưu trạng thái đúng vào localStorage
   localStorage.setItem("theme", isDarkNow ? "dark" : "light");
 }
-//   body.classList.toggle("dark-mode");
 
-//   if (body.classList.contains("dark-mode")) {
-//     localStorage.setItem("theme", "dark");
-//   } else {
-//     localStorage.setItem("theme", "light");
-//   }
-// } 
-
-// function initTheme() {
-//   const savedTheme = localStorage.getItem("theme");
-//   if (savedTheme === "dark") {
-//     document.body.classList.add("dark-mode");
-//   }
-// }
 export function initTheme() {
     // 1. Lấy trạng thái cũ từ localStorage
     const savedTheme = localStorage.getItem("theme");
