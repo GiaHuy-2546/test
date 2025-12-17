@@ -51,6 +51,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 
+app.get("/ping", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*"); // Cho phép mọi nguồn truy cập
+  res.send("pong");
+});
+
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
