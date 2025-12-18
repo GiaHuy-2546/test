@@ -175,6 +175,8 @@ function stopServers() {
     log("AdminPanel", "Đã gửi lệnh dừng cho Gateway.js.");
     gatewayKilled = true;
   }
+  onlineClients.clear();
+  broadcastClientListUpdate();
   if (!cppKilled && !gatewayKilled) {
     log("AdminPanel", "Servers da dung san.");
   }

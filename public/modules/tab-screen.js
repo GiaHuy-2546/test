@@ -30,8 +30,8 @@ export function updateScreen(save = false) {
 export function toggleAutoShot(cb) {
   if (cb.checked) {
     store.isSavingScreenshot = false;
-    updateScreen(false);
-    store.autoShotInt = setInterval(() => updateScreen(false), 2000);
+    updateScreen(true);
+    store.autoShotInt = setInterval(() => updateScreen(true), 2000);
   } else {
     clearInterval(store.autoShotInt);
   }
@@ -80,19 +80,19 @@ export function toggleScreenStream(btn) {
   const streamView = document.getElementById("screenStreamView");
   const streamStatus = document.getElementById("screenStreamStatus");
   const streamPlaceholder = document.getElementById("screenStreamPlaceholder");
-  const chkMouse = document.getElementById('chkMouse');
-  const chkKeyboard = document.getElementById('chkKeyboard');
+  const chkMouse = document.getElementById("chkMouse");
+  const chkKeyboard = document.getElementById("chkKeyboard");
 
   // TRƯỜNG HỢP 1: TẮT STREAM (gọi từ nội bộ hoặc khi chuyển tab)
   if (btn === null) {
     store.isScreenStreamOn = false;
-    
+
     // Reset UI
     streamView.removeAttribute("src");
     streamView.style.display = "none";
     if (streamStatus) streamStatus.style.display = "none";
     if (streamPlaceholder) streamPlaceholder.style.display = "block";
-    
+
     // Reset nút
     const activeBtn = document.getElementById("btnToggleScreenStream");
     if (activeBtn) {
@@ -100,17 +100,17 @@ export function toggleScreenStream(btn) {
       activeBtn.classList.remove("btn-danger");
       activeBtn.classList.add("btn-primary");
     }
-    
+
     // TẮT HẾT điều khiển chuột/bàn phím
     if (chkMouse && chkMouse.checked) {
       chkMouse.checked = false;
-      if (isMouseControlEnabled) toggleRemoteInput('mouse');
+      if (isMouseControlEnabled) toggleRemoteInput("mouse");
     }
     if (chkKeyboard && chkKeyboard.checked) {
       chkKeyboard.checked = false;
-      if (isKeyboardControlEnabled) toggleRemoteInput('keyboard');
+      if (isKeyboardControlEnabled) toggleRemoteInput("keyboard");
     }
-    
+
     return;
   }
 
@@ -125,7 +125,7 @@ export function toggleScreenStream(btn) {
 
     if (streamPlaceholder) streamPlaceholder.style.display = "none";
     streamView.style.display = "block";
-    
+
     btn.textContent = "⏹️ Tắt Stream Màn Hình";
     btn.classList.add("btn-danger");
     btn.classList.remove("btn-primary");
@@ -143,49 +143,52 @@ export function toggleScreenStream(btn) {
 // === HÀM BẬT/TẮT ĐIỀU KHIỂN (CHỈ HOẠT ĐỘNG KHI STREAM BẬT) ===
 export function toggleRemoteInput(type) {
   // KIỂM TRA: Chỉ cho phép bật điều khiển khi stream đang chạy
-  if (!store.isScreenStreamOn && 
-      ((type === 'mouse' && !isMouseControlEnabled) || 
-       (type === 'keyboard' && !isKeyboardControlEnabled))) {
+  if (
+    !store.isScreenStreamOn &&
+    ((type === "mouse" && !isMouseControlEnabled) ||
+      (type === "keyboard" && !isKeyboardControlEnabled))
+  ) {
     logActionUI("⚠️ Bật Stream trước khi điều khiển!", false);
-    
+
     // Reset checkbox về trạng thái cũ
-    const chk = document.getElementById(type === 'mouse' ? 'chkMouse' : 'chkKeyboard');
+    const chk = document.getElementById(
+      type === "mouse" ? "chkMouse" : "chkKeyboard"
+    );
     if (chk) chk.checked = false;
     return;
   }
 
   const streamView = document.getElementById("screenStreamView");
   const streamContainer = document.getElementById("streamContainer");
-  
-  if (type === 'mouse') {
+
+  if (type === "mouse") {
     isMouseControlEnabled = !isMouseControlEnabled;
-    
+
     if (isMouseControlEnabled) {
-      streamView.addEventListener('mousemove', handleMouseMove);
-      streamView.addEventListener('mousedown', handleMouseDown);
-      streamView.addEventListener('mouseup', handleMouseUp);
-      streamView.addEventListener('contextmenu', (e) => e.preventDefault());
-      streamView.style.cursor = 'crosshair';
+      streamView.addEventListener("mousemove", handleMouseMove);
+      streamView.addEventListener("mousedown", handleMouseDown);
+      streamView.addEventListener("mouseup", handleMouseUp);
+      streamView.addEventListener("contextmenu", (e) => e.preventDefault());
+      streamView.style.cursor = "crosshair";
       logActionUI("Đã BẬT điều khiển chuột", true);
     } else {
-      streamView.removeEventListener('mousemove', handleMouseMove);
-      streamView.removeEventListener('mousedown', handleMouseDown);
-      streamView.removeEventListener('mouseup', handleMouseUp);
-      streamView.style.cursor = 'default';
+      streamView.removeEventListener("mousemove", handleMouseMove);
+      streamView.removeEventListener("mousedown", handleMouseDown);
+      streamView.removeEventListener("mouseup", handleMouseUp);
+      streamView.style.cursor = "default";
       logActionUI("Đã TẮT điều khiển chuột", true);
     }
-  }
-  else if (type === 'keyboard') {
+  } else if (type === "keyboard") {
     isKeyboardControlEnabled = !isKeyboardControlEnabled;
-    
+
     if (isKeyboardControlEnabled) {
       streamContainer.focus();
-      streamContainer.addEventListener('keydown', handleKeyDown);
-      streamContainer.addEventListener('keyup', handleKeyUp);
+      streamContainer.addEventListener("keydown", handleKeyDown);
+      streamContainer.addEventListener("keyup", handleKeyUp);
       logActionUI("Đã BẬT điều khiển bàn phím", true);
     } else {
-      streamContainer.removeEventListener('keydown', handleKeyDown);
-      streamContainer.removeEventListener('keyup', handleKeyUp);
+      streamContainer.removeEventListener("keydown", handleKeyDown);
+      streamContainer.removeEventListener("keyup", handleKeyUp);
       logActionUI("Đã TẮT điều khiển bàn phím", true);
     }
   }
@@ -194,18 +197,18 @@ export function toggleRemoteInput(type) {
 // === XỬ LÝ SỰ KIỆN CHUỘT ===
 function handleMouseMove(event) {
   if (!store.isScreenStreamOn || !isMouseControlEnabled) return;
-  
+
   const rect = event.target.getBoundingClientRect();
   const x = (event.clientX - rect.left) / rect.width;
   const y = (event.clientY - rect.top) / rect.height;
-  
+
   sendCommand(`INPUT_MOUSE move ${x.toFixed(4)} ${y.toFixed(4)}`);
 }
 
 function handleMouseDown(event) {
   event.preventDefault();
   if (!store.isScreenStreamOn || !isMouseControlEnabled) return;
-  
+
   const btn = event.button;
   sendCommand(`INPUT_MOUSE down ${btn}`);
 }
@@ -213,7 +216,7 @@ function handleMouseDown(event) {
 function handleMouseUp(event) {
   event.preventDefault();
   if (!store.isScreenStreamOn || !isMouseControlEnabled) return;
-  
+
   const btn = event.button;
   sendCommand(`INPUT_MOUSE up ${btn}`);
 }
@@ -228,8 +231,8 @@ function handleKeyDown(event) {
   }
   // -------------------------------
 
-  event.preventDefault(); 
-  
+  event.preventDefault();
+
   sendCommand(`INPUT_KEY down ${event.keyCode}`);
 }
 
@@ -240,8 +243,7 @@ function handleKeyUp(event) {
   if (event.isComposing || event.keyCode === 229) {
     return;
   }
-sendCommand(`INPUT_KEY up ${event.keyCode}`);
+  sendCommand(`INPUT_KEY up ${event.keyCode}`);
 }
 
 window.toggleRemoteInput = toggleRemoteInput;
-
